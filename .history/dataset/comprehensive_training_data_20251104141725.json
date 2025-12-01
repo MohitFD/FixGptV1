@@ -1,0 +1,464 @@
+
+      "language": "English"
+    },{
+  "metadata": {
+    "description": "Comprehensive FixHR Training Dataset - Merged from all HR modules",
+    "total_examples": 0,
+    "categories": {
+      "general_hr": "General HR app usage and installation",
+      "leave_management": "Leave application, balance, approvals",
+      "attendance_tracking": "Attendance reports, analysis, time filters",
+      "gatepass_management": "Gatepass application and approvals",
+      "holiday_management": "Holiday queries and information",
+      "missed_punch": "Missed punch application and management",
+      "approval_workflows": "Approval and rejection processes"
+    },
+    "languages": ["English", "Hindi"],
+    "created_date": "2025-01-09"
+  },
+  
+  "train": [
+    {
+      "instruction": "How to install Fix HR app?",
+      "output": "1. Go to Google Play Store.\n2. Search for 'Fix HR' app.\n3. Click on the app with this link: https://play.google.com/store/apps/details?id=com.fd.fixHR&hl=en_IN\n4. Click 'Install' and wait for the app to download.\n5. Open the app and login with your credentials.",
+      "category": "general_hr",
+      "language": "English"
+    },
+    {
+      "instruction": "How to install Fix HR app on iPhone?",
+      "output": "1. Go to the App Store.\n2. Search for 'Fix HR' app.\n3. Click on the app: https://apps.apple.com/in/app/fixhr/id6744237631\n4. Tap 'Install' and wait for the app to install.\n5. Open the app and log in with your credentials.",
+      "category": "general_hr",
+      "language": "English"
+    },
+    {
+      "instruction": "How to login in Fix HR app?",
+      "output": "1. Open the Fix HR app and go to the login screen.\n2. Option 1: Login with OTP.\n   - Enter your mobile number.\n   - You will receive an OTP.\n   - Enter the OTP to login.\n3. Option 2: Login with Password.\n   - Enter your registered mobile number.\n   - Enter your password.\n   - Click 'Login' to access your account.",
+      "category": "general_hr",
+      "language": "English"
+    },
+    {
+      "instruction": "How can I mark attendance?",
+      "output": "1. Mobile Check-in / Check-out: Use the mobile app to punch your attendance.\n2. Biometric: Use fingerprint or other biometric device.\n3. Face Recognition: Attendance through facial recognition.\n4. Bar Code: Scan a barcode to mark attendance.",
+      "category": "general_hr",
+      "language": "English"
+    },
+    {
+      "instruction": "What is Fix HR?",
+      "output": "Fix HR is an HR process management app. Using this app, employees can manage attendance, apply for leave, view late marks, submit missed punches, get admin approvals, request gate passes, and check leave balance. It helps in complete employee attendance and HR-related task management.",
+      "category": "general_hr",
+      "language": "English"
+    },
+    {
+      "instruction": "Fix HR is developed by which company?",
+      "output": "Fix HR is a mobile and web-based HR management application developed by FixingDots Technologies. The app is designed to simplify and automate HR tasks such as attendance tracking, leave management, gate pass requests, missed punch submissions, and admin approvals. It is widely used by organizations to manage employee operations efficiently.",
+      "category": "general_hr",
+      "language": "English"
+    },
+    {
+      "instruction": "How do I apply for leave?",
+      "output": "You can apply for leave using commands like:\n- apply leave for 10 Oct 2025 for personal reason\n- apply casual leave for tomorrow\n- apply sick leave for 15-17 December 2025\n\nSupported leave types:\n- Casual Leave (CL)\n- Sick Leave (SL)\n- Unpaid Leave (UPL)\n- Half day leave\n\nExample: 'apply leave for 10 Oct 2025 for personal reason'",
+      "category": "leave_management",
+      "language": "English"
+    },
+    {
+      "instruction": "What is my leave balance?",
+      "output": "To check your leave balance, ask:\n- 'my leave balance'\n- 'leave balance'\n- 'my balance'\n\nThis will show you:\n- Total allotted leaves\n- Leaves taken\n- Remaining balance\n- Carried forward leaves",
+      "category": "leave_management",
+      "language": "English"
+    },
+    {
+      "instruction": "Show me my leave requests",
+      "output": "To view your leave requests, ask:\n- 'my leaves'\n- 'my leave list'\n- 'my leave requests'\n\nThis will show all your submitted leave requests with their status (Requested, Approved, Rejected).",
+      "category": "leave_management",
+      "language": "English"
+    },
+    {
+      "instruction": "apply leave for tomorrow for personal work",
+      "output": "✅ Leave applied!\n📅 Tomorrow → Tomorrow\n📝 Reason: personal work\n🏷️ Category: Unpaid Leave - (UPL)",
+      "category": "leave_management",
+      "language": "English"
+    },
+    {
+      "instruction": "apply casual leave for 15-17 December 2025 for family function",
+      "output": "✅ Leave applied!\n📅 15 Dec, 2025 → 17 Dec, 2025\n📝 Reason: family function\n🏷️ Category: Casual Leave (CL)",
+      "category": "leave_management",
+    {
+      "instruction": "apply half day sick leave for today",
+      "output": "✅ Leave applied!\n📅 Today → Today\n📝 Reason: N/A\n🏷️ Category: Sick Leave (SL)",
+      "category": "leave_management",
+      "language": "English"
+    },
+    {
+      "instruction": "apply sick leave for 3 days starting tomorrow",
+      "output": "✅ Leave applied!\n📅 Tomorrow → Day after tomorrow\n📝 Reason: N/A\n🏷️ Category: Sick Leave (SL)",
+      "category": "leave_management",
+      "language": "English"
+    },
+    {
+      "instruction": "How do I approve leave requests?",
+      "output": "To approve leave requests:\n1. First ask 'pending leave' to see requests\n2. Use the approve button in the UI, or\n3. Send command: 'approve leave|LEAVE_ID|EMP_D_ID|MODULE_ID|MASTER_MODULE_ID|note'\n\nExample: 'approve leave|123|45|67|89|approved'",
+      "category": "approval_workflows",
+      "language": "English"
+    },
+    {
+      "instruction": "How do I reject leave requests?",
+      "output": "To reject leave requests:\n1. First ask 'pending leave' to see requests\n2. Use the reject button in the UI, or\n3. Send command: 'reject leave|LEAVE_ID|EMP_D_ID|MODULE_ID|MASTER_MODULE_ID|reason'\n\nExample: 'reject leave|123|45|67|89|insufficient reason'",
+      "category": "approval_workflows",
+      "language": "English"
+    },
+    {
+      "instruction": "Show pending leave approvals",
+      "output": "To see pending leave approvals, ask:\n- 'pending leave'\n- 'pending leaves'\n\nThis will show all leave requests waiting for your approval with employee details, dates, and reasons.",
+      "category": "leave_management",
+      "language": "English"
+    },
+    {
+      "instruction": "pending leave",
+      "output": "📋 Leave Requests:\n\n[Shows leave cards with employee names, dates, reasons, leave types, and approval buttons]",
+      "category": "leave_management",
+      "language": "English"
+    },
+    {
+      "instruction": "How do I check attendance?",
+      "output": "You can check attendance using various commands:\n\n1. Full attendance report:\n- 'attendance report for October 2025'\n- 'attendance for 1-15 October 2025'\n\n2. Specific employee attendance:\n- 'attendance for John for October 2025'\n\n3. Filtered reports:\n- 'absent report for October 2025'\n- 'late report for October 2025'\n- 'leave report for October 2025'\n\n4. Day analysis:\n- '20 October absent list'\n- '15 October late employees'\n\n5. Time filters:\n- 'employees after 10am on 20 October'\n- 'employees before 9am'\n- 'employees at 10am'",
+      "category": "attendance_tracking",
+      "language": "English"
+    },
+    {
+      "instruction": "Show attendance report for October 2025",
+      "output": "📒 Attendance Register (October 2025, 1-31):\n\n[Table showing employee names and daily status]\n\n📊 Detailed Report:\n\n[Individual employee details with in/out times, work hours, late status, overtime, remarks]\n\n📥 Download Excel: /download_excel/",
+      "category": "attendance_tracking",
+      "language": "English"
+    },
+    {
+      "instruction": "Is John present today?",
+      "output": "To check if John is present today, I need to:\n1. Fetch today's attendance data\n2. Look for John's record\n3. Check his status (Present/Absent/Leave)\n\nAsk: 'Is John present on [specific date]' for accurate results.",
+      "category": "attendance_tracking",
+      "language": "English"
+    },
+    {
+      "instruction": "Show absent employees for 20 October 2025",
+      "output": "📅 2025-10-20 Absent: John Smith, Sarah Johnson, Mike Wilson\n\n[Shows list of employees who were absent on the specified date]",
+      "category": "attendance_tracking",
+      "language": "English"
+    },
+    {
+      "instruction": "Show late employees for 15 October 2025",
+      "output": "📅 2025-10-15 Late: Alice Brown, Bob Davis\n\n[Shows employees who came late on the specified date]",
+      "category": "attendance_tracking",
+      "language": "English"
+    },
+    {
+      "instruction": "Show employees who came after 10am on 20 October",
+      "output": "⏰ Employees after 10am on 2025-10-20: John Smith (2025-10-20, 10:15), Sarah Johnson (2025-10-20, 10:30)\n\n📥 Download Excel: /download_excel/",
+      "category": "attendance_tracking",
+      "language": "English"
+    },
+    {
+      "instruction": "attendance report for 1-15 October 2025",
+      "output": "📒 Attendance Register (October 2025, 1-15):\n\n[Shows attendance table for the specified date range with employee names and daily status codes like P (Present), ABS (Absent), HD (Half Day), etc.]",
+      "category": "attendance_tracking",
+      "language": "English"
+    },
+    {
+      "instruction": "Show leave report for October 2025",
+      "output": "📅 Leave Report (1-31 October 2025):\n\n[Shows detailed leave records with employee names, dates, leave types (CL, SL, EL, PL, ML), in/out times, work hours, and remarks]",
+      "category": "attendance_tracking",
+      "language": "English"
+    },
+    {
+      "instruction": "Show early exit employees for October 2025",
+      "output": "📅 Early Exit Report (1-31 October 2025):\n\n[Shows employees who left early with their exit times and work hours]",
+      "category": "attendance_tracking",
+      "language": "English"
+    },
+    {
+      "instruction": "How do I apply for gatepass?",
+      "output": "You can apply for gatepass using commands like:\n- 'apply gatepass for 10am to 11am for meeting'\n- 'apply gatepass for 2pm to 4pm for client visit in Mumbai'\n- 'apply gatepass for 9am to 12pm for bank work'\n\nFormat: 'apply gatepass for [out_time] to [in_time] for [reason] in [destination]'\n\nExample: 'apply gatepass for 10am to 11am for meeting in client office'",
+      "category": "gatepass_management",
+      "language": "English"
+    },
+    {
+      "instruction": "Show pending gatepass approvals",
+      "output": "To see pending gatepass approvals, ask:\n- 'pending gatepass'\n\nThis will show all gatepass requests waiting for approval with employee details, timings, reasons, and destinations.",
+      "category": "gatepass_management",
+      "language": "English"
+    },
+    {
+      "instruction": "How do I approve gatepass requests?",
+      "output": "To approve gatepass requests:\n1. First ask 'pending gatepass' to see requests\n2. Use the approve button in the UI, or\n3. Send command: 'approve gatepass|GATEPASS_ID|EMP_D_ID|MODULE_ID|MASTER_MODULE_ID|note'\n\nExample: 'approve gatepass|123|45|67|89|approved'",
+      "category": "approval_workflows",
+      "language": "English"
+    },
+    {
+      "instruction": "How do I reject gatepass requests?",
+      "output": "To reject gatepass requests:\n1. First ask 'pending gatepass' to see requests\n2. Use the reject button in the UI, or\n3. Send command: 'reject gatepass|GATEPASS_ID|EMP_D_ID|MODULE_ID|MASTER_MODULE_ID|reason'\n\nExample: 'reject gatepass|123|45|67|89|not approved'",
+      "category": "approval_workflows",
+      "language": "English"
+    },
+    {
+      "instruction": "apply gatepass for 10am to 11am for meeting",
+      "output": "✅ Gate Pass applied! 2025-10-20 10:00:00 → 2025-10-20 11:00:00, Reason: meeting, Destination: Office",
+      "category": "gatepass_management",
+      "language": "English"
+    },
+    {
+      "instruction": "apply gatepass for 2pm to 4pm for client visit in Mumbai",
+      "output": "✅ Gate Pass applied! 2025-10-20 14:00:00 → 2025-10-20 16:00:00, Reason: client visit, Destination: Mumbai",
+      "category": "gatepass_management",
+      "language": "English"
+    },
+    {
+      "instruction": "apply gatepass for 9am to 12pm for bank work in SBI branch",
+      "output": "✅ Gate Pass applied! 2025-10-20 09:00:00 → 2025-10-20 12:00:00, Reason: bank work, Destination: SBI branch",
+      "category": "gatepass_management",
+      "language": "English"
+    },
+    {
+      "instruction": "pending gatepass",
+      "output": "📋 Pending GatePass Approvals:\n\n[Shows gatepass cards with employee names, out/in times, reasons, destinations, and approval buttons]",
+      "category": "gatepass_management",
+      "language": "English"
+    },
+    {
+      "instruction": "How do I check holidays?",
+      "output": "You can check holidays using various commands:\n\n1. Today's holiday:\n- 'today holiday'\n- 'is today a holiday?'\n\n2. Tomorrow's holiday:\n- 'tomorrow holiday'\n- 'is tomorrow a holiday?'\n\n3. Next holiday:\n- 'next holiday'\n- 'when is the next holiday?'\n\n4. Previous holiday:\n- 'previous holiday'\n- 'last holiday'\n\n5. Monthly holidays:\n- 'holiday list for October 2025'\n- 'holidays in December 2025'\n- 'current month holidays'\n\n6. Yearly holidays:\n- 'holidays for 2025'\n- 'all holidays this year'\n\n7. Next month holidays:\n- 'next month holidays'\n- 'agle mahine chhutti'",
+      "category": "holiday_management",
+      "language": "English"
+    },
+    {
+      "instruction": "Is today a holiday?",
+      "output": "To check if today is a holiday, I will:\n1. Fetch today's date\n2. Check against the holiday list\n3. Return the holiday name if it's a holiday, or confirm it's a working day\n\nAsk: 'today holiday' for the result.",
+      "category": "holiday_management",
+      "language": "English"
+    },
+    {
+      "instruction": "Show holidays for October 2025",
+      "output": "🎉 Holidays in October 2025:\n\nDate | Holiday\n--- | ---\n2025-10-02 | Gandhi Jayanti\n2025-10-08 | Dussehra\n2025-10-12 | Eid-e-Milad\n\n📥 Download Excel: /download_excel/",
+      "category": "holiday_management",
+      "language": "English"
+    },
+    {
+      "instruction": "Show next month holidays",
+      "output": "🎉 Holidays in November 2025:\n\nDate | Holiday\n--- | ---\n2025-11-01 | Diwali\n2025-11-02 | Bhai Dooj\n2025-11-15 | Guru Nanak Jayanti",
+      "category": "holiday_management",
+      "language": "English"
+    },
+    {
+      "instruction": "Show all holidays for 2025",
+      "output": "🎉 Holidays in 2025:\n\nDate | Holiday\n--- | ---\n2025-01-26 | Republic Day\n2025-03-08 | Holi\n2025-04-14 | Ambedkar Jayanti\n2025-05-01 | Labour Day\n2025-08-15 | Independence Day\n2025-10-02 | Gandhi Jayanti\n2025-10-08 | Dussehra\n2025-11-01 | Diwali\n2025-12-25 | Christmas\n\n📥 Download Excel: /download_excel/",
+      "category": "holiday_management",
+      "language": "English"
+    },
+    {
+      "instruction": "today holiday",
+      "output": "✅ Today is Gandhi Jayanti",
+      "category": "holiday_management",
+      "language": "English"
+    },
+    {
+      "instruction": "tomorrow holiday",
+      "output": "❌ Tomorrow (2025-10-21) is not a holiday.",
+      "category": "holiday_management",
+      "language": "English"
+    },
+    {
+      "instruction": "next holiday",
+      "output": "📅 Next holiday is Dussehra (2025-10-08 → 2025-10-08).",
+      "category": "holiday_management",
+      "language": "English"
+    },
+    {
+      "instruction": "previous holiday",
+      "output": "📅 Last holiday was Gandhi Jayanti (2025-10-02 → 2025-10-02).",
+      "category": "holiday_management",
+      "language": "English"
+    },
+    {
+      "instruction": "current month holidays",
+      "output": "🎉 Holidays in October 2025:\n\nDate | Holiday\n--- | ---\n2025-10-02 | Gandhi Jayanti\n2025-10-08 | Dussehra\n2025-10-12 | Eid-e-Milad\n\n📥 Download Excel: /download_excel/",
+      "category": "holiday_management",
+      "language": "English"
+    },
+    {
+      "instruction": "holiday list for December 2025",
+      "output": "🎉 Holidays in December 2025:\n\nDate | Holiday\n--- | ---\n2025-12-25 | Christmas\n\n📥 Download Excel: /download_excel/",
+      "category": "holiday_management",
+      "language": "English"
+    },
+    {
+      "instruction": "How do I apply for missed punch?",
+      "output": "You can apply for missed punch using commands like:\n- 'apply missed punch for today in 9am out 6pm for forgot'\n- 'apply missed punch for yesterday in 10am for system issue'\n- 'apply missed punch for 15 October in 9am out 5pm for device problem'\n\nFormat: 'apply missed punch for [date] in [in_time] out [out_time] for [reason]'\n\nSupported reasons:\n- forgot\n- system issue\n- device problem\n- network issue\n- other",
+      "category": "missed_punch",
+      "language": "English"
+    },
+    {
+      "instruction": "Show my missed punch requests",
+      "output": "To view your missed punch requests, ask:\n- 'my missed punch'\n- 'my missed punch list'\n- 'my missed'\n\nThis will show all your submitted missed punch requests with their status, dates, times, and reasons.",
+      "category": "missed_punch",
+      "language": "English"
+    },
+    {
+      "instruction": "Show pending missed punch approvals",
+      "output": "To see pending missed punch approvals, ask:\n- 'pending missed punch'\n- 'missed punch list'\n\nThis will show all missed punch requests waiting for approval with employee details, dates, reasons, and approval buttons.",
+      "category": "missed_punch",
+      "language": "English"
+    },
+    {
+      "instruction": "How do I approve missed punch requests?",
+      "output": "To approve missed punch requests:\n1. First ask 'pending missed punch' to see requests\n2. Use the approve button in the UI, or\n3. Send command: 'approve missed|MISSED_ID|EMP_D_ID|MODULE_ID|MASTER_MODULE_ID|note'\n\nExample: 'approve missed|123|45|67|89|approved'",
+      "category": "approval_workflows",
+      "language": "English"
+    },
+    {
+      "instruction": "How do I reject missed punch requests?",
+      "output": "To reject missed punch requests:\n1. First ask 'pending missed punch' to see requests\n2. Use the reject button in the UI, or\n3. Send command: 'reject missed|MISSED_ID|EMP_D_ID|MODULE_ID|MASTER_MODULE_ID|reason'\n\nExample: 'reject missed|123|45|67|89|not approved'",
+      "category": "approval_workflows",
+      "language": "English"
+    },
+    {
+      "instruction": "apply missed punch for today in 9am out 6pm for forgot",
+      "output": "✅ Missed Punch applied successfully!\n📅 Date: Today\n🕓 Type: Both\n🔹 In: 9:00 AM | Out: 6:00 PM\n📝 Reason: forgot",
+      "category": "missed_punch",
+      "language": "English"
+    },
+    {
+      "instruction": "apply missed punch for yesterday in 10am for system issue",
+      "output": "✅ Missed Punch applied successfully!\n📅 Date: Yesterday\n🕓 Type: In Only\n🔹 In: 10:00 AM | Out: -\n📝 Reason: system issue",
+      "category": "missed_punch",
+      "language": "English"
+    },
+    {
+      "instruction": "apply missed punch for 15 October out 5pm for device problem",
+      "output": "✅ Missed Punch applied successfully!\n📅 Date: 15 Oct, 2025\n🕓 Type: Out Only\n🔹 In: - | Out: 5:00 PM\n📝 Reason: device problem",
+      "category": "missed_punch",
+      "language": "English"
+    },
+    {
+      "instruction": "my missed punch list",
+      "output": "📋 Your Missed Punch Requests:\n\n[Shows your missed punch cards with dates, in/out times, reasons, types, status, and approver details]",
+      "category": "missed_punch",
+      "language": "English"
+    },
+    {
+      "instruction": "Fix HR app kaise install karein?",
+      "output": "1. Google Play Store par jao.\n2. 'Fix HR' app search karo.\n3. Is link wale app pe click karo: https://play.google.com/store/apps/details?id=com.fd.fixHR&hl=en_IN\n4. 'Install' pe click karo aur app download hone do.\n5. App open karo aur apne credentials se login karo.",
+      "category": "general_hr",
+      "language": "Hindi"
+    },
+    {
+      "instruction": "iPhone mein Fix HR app kaise install karein?",
+      "output": "1. App Store par jao.\n2. 'Fix HR' app search karo.\n3. Is app pe click karo: https://apps.apple.com/in/app/fixhr/id6744237631\n4. 'Install' pe tap karo aur app install hone do.\n5. App open karo aur apne credentials se login karo.",
+      "category": "general_hr",
+      "language": "Hindi"
+    },
+    {
+      "instruction": "Fix HR app mein login kaise karein?",
+      "output": "1. Fix HR app open karo aur login screen pe jao.\n2. Option 1: OTP se login karo.\n   - Apna mobile number daalo.\n   - OTP milega.\n   - OTP enter karke login karo.\n3. Option 2: Password se login karo.\n   - Registered mobile number daalo.\n   - Password enter karo.\n   - 'Login' pe click karke apne account mein jao.",
+      "category": "general_hr",
+      "language": "Hindi"
+    },
+    {
+      "instruction": "Attendance kaise mark karein?",
+      "output": "1. Mobile se Check-in / Check-out karo app ke through.\n2. Biometric use karo — fingerprint ya kisi biometric device se.\n3. Face Recognition se bhi attendance ho sakti hai.\n4. Bar Code scan karke attendance mark karo.",
+      "category": "general_hr",
+      "language": "Hindi"
+    },
+    {
+      "instruction": "Leave kaise apply karein?",
+      "output": "1. App screen ko right swipe karo.\n2. 'Leave' option dikhega.\n3. Right side pe 'Add' button pe click karo.\n4. Leave ka type select karo.\n5. Casual, Sick, ya Unpaid leave category choose karo.\n6. Full day ya Half day leave select karo.\n7. Leave ka reason likho.\n8. 'Apply' pe click karke leave submit karo.",
+      "category": "leave_management",
+      "language": "Hindi"
+    },
+    {
+      "instruction": "Leave balance kaise check karein?",
+      "output": "1. App screen ko right swipe karo.\n2. 'Leave Balance' section dhoondo.\n3. Aapka available leave balance screen pe dikhega.",
+      "category": "leave_management",
+      "language": "Hindi"
+    },
+    {
+      "instruction": "Gatepass kaise apply karein?",
+      "output": "1. App screen ko right swipe karo.\n2. 'Gatepass' pe click karo.\n3. Right side mein 'Add' button pe click karo.\n4. Apna In aur Out time daalo.\n5. Destination likho.\n6. Gatepass ka reason likho.\n7. 'Apply' pe click karke gatepass request submit karo.",
+      "category": "gatepass_management",
+      "language": "Hindi"
+    },
+    {
+      "instruction": "Missed Punch kaise apply karein?",
+      "output": "1. Fix HR app mein apna account open karo.\n2. Screen ko right swipe karo.\n3. 'Missed Punch' option pe click karo.\n4. Niche right corner mein 'Add' button dikhega — uspe click karo.\n5. Missed punch ka date aur time select karo.\n6. Punch type choose karo — Check In ya Check Out.\n7. Missed punch ka reason likho.\n8. Request submit karo.",
+      "category": "missed_punch",
+      "language": "Hindi"
+    },
+    {
+      "instruction": "Holiday list kahan dekhein?",
+      "output": "1. Fix HR app mein apna account open karo.\n2. Left swipe karke 'Profile' section pe jao.\n3. 'Holiday List' option dikhai dega. Uspe click karo holiday list dekhne ke liye.",
+      "category": "holiday_management",
+      "language": "Hindi"
+    },
+    {
+      "instruction": "Monthly attendance kaise dekhein?",
+      "output": "1. Mobile screen ko right swipe karo.\n2. 'Calendar' option dhoondo aur uspe click karo.\n3. Tumhara pura month ka attendance details dikhega.\n4. Isme dikhega ki kab present the, absent the, ya late the.",
+      "category": "attendance_tracking",
+      "language": "Hindi"
+    },
+    {
+      "instruction": "How to download your salary payslip?",
+      "output": "1. Log in to your Fix HR app account.\n2. Swipe right to open the menu. and Click on 'Payslip'\n3. Select the month and click on 'Download'.",
+      "category": "general_hr",
+      "language": "English"
+    },
+    {
+      "instruction": "How to apply for a loan or salary advance?",
+      "output": "1. Open Fix HR app and swipe right.\n2. Click on 'Loan/Advance'.\n3. Click on 'Apply'.\n4. Enter the requested amount.\n5. Add a reason and submit.",
+      "category": "general_hr",
+      "language": "English"
+    },
+    {
+      "instruction": "How to apply for TA/DA travel allowance?",
+      "output": "1. Log in to Fix HR app.\n2. Swipe right to open the menu.\n3. Click on 'TA/DA'.\n4. Enter trip details, dates, and expenses.\n5. Attach bills and submit the form.",
+      "category": "general_hr",
+      "language": "English"
+    },
+    {
+      "instruction": "How to check your TA/DA eligibility?",
+      "output": "1. Open Fix HR app and log in.\n2.Slide right to access the menu and Tap on 'View Eligibility'.\n3. Your allowance and eligibility rules will be shown.",
+      "category": "general_hr",
+      "language": "English"
+    },
+    {
+      "instruction": "Where to find regulatory documents in Fix HR app?",
+      "output": "1. Open the Fix HR app.\n2. Slide right to open the side menu.\n3. Tap on 'Regulatory Doc'.\n4. View or download the required documents.",
+      "category": "general_hr",
+      "language": "English"
+    },
+    {
+      "instruction": "How to mark attendance using QR code?",
+      "output": "1. Open the Fix HR app and log in.\n2. Slide right to open the main menu.\n3. Tap on 'QR Reader'.\n4. Scan the QR code at the office gate.\n5. Your attendance will be marked automatically.",
+      "category": "general_hr",
+      "language": "English"
+    },
+    {
+      "instruction": "What if I forget my password?",
+      "output": "If you forget your password:\n1. Go to the login screen\n2. Click on 'Forgot Password'\n3. Enter your registered mobile number\n4. You will receive an OTP\n5. Enter the OTP to reset your password\n6. Set a new password and login",
+      "category": "general_hr",
+      "language": "English"
+    },
+    {
+      "instruction": "What if the app is not working?",
+      "output": "If the app is not working:\n1. Check your internet connection\n2. Restart the app\n3. Clear app cache and data\n4. Update to the latest version\n5. Contact IT support if issues persist",
+      "category": "general_hr",
+      "language": "English"
+    },
+    {
+      "instruction": "Can I use the app offline?",
+      "output": "The Fix HR app requires internet connection for most features:\n- Attendance marking needs internet\n- Leave applications need internet\n- Data synchronization needs internet\n\nSome features like viewing cached data might work offline temporarily.",
+      "category": "general_hr",
+      "language": "English"
+    },
+    {
+      "instruction": "How to change my profile information?",
+      "output": "To change your profile information:\n1. Open the app and go to Profile section\n2. Click on 'Edit Profile'\n3. Update the required information\n4. Save the changes\n5. Some changes may require admin approval",
+      "category": "general_hr",
+      "language": "English"
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "train": [
+    {
+      "instruction": "How do I apply for leave?",
+      "output": "You can apply for leave using commands like:\n- apply leave for 10 Oct 2025 for personal reason\n- apply casual leave for tomorrow\n- apply sick leave for 15-17 December 2025\n\nSupported leave types:\n- Casual Leave (CL)\n- Sick Leave (SL)\n- Unpaid Leave (UPL)\n- Half day leave\n\nExample: 'apply leave for 10 Oct 2025 for personal reason'"
+    },
+    {
+      "instruction": "What is my leave balance?",
+      "output": "To check your leave balance, ask:\n- 'my leave balance'\n- 'leave balance'\n- 'my balance'\n\nThis will show you:\n- Total allotted leaves\n- Leaves taken\n- Remaining balance\n- Carried forward leaves"
+    },
+    {
+      "instruction": "Show me my leave requests",
+      "output": "To view your leave requests, ask:\n- 'my leaves'\n- 'my leave list'\n- 'my leave requests'\n\nThis will show all your submitted leave requests with their status (Requested, Approved, Rejected)."
+    },
+    {
+      "instruction": "How do I approve leave requests?",
+      "output": "To approve leave requests:\n1. First ask 'pending leave' to see requests\n2. Use the approve button in the UI, or\n3. Send command: 'approve leave|LEAVE_ID|EMP_D_ID|MODULE_ID|MASTER_MODULE_ID|note'\n\nExample: 'approve leave|123|45|67|89|approved'"
+    },
+    {
+      "instruction": "How do I check attendance?",
+      "output": "You can check attendance using various commands:\n\n1. Full attendance report:\n- 'attendance report for October 2025'\n- 'attendance for 1-15 October 2025'\n\n2. Specific employee attendance:\n- 'attendance for John for October 2025'\n\n3. Filtered reports:\n- 'absent report for October 2025'\n- 'late report for October 2025'\n- 'leave report for October 2025'\n\n4. Day analysis:\n- '20 October absent list'\n- '15 October late employees'\n\n5. Time filters:\n- 'employees after 10am on 20 October'\n- 'employees before 9am'\n- 'employees at 10am'"
+    },
+    {
+      "instruction": "How do I apply for gatepass?",
+      "output": "You can apply for gatepass using commands like:\n- 'apply gatepass for 10am to 11am for meeting'\n- 'apply gatepass for 2pm to 4pm for client visit in Mumbai'\n- 'apply gatepass for 9am to 12pm for bank work'\n\nFormat: 'apply gatepass for [out_time] to [in_time] for [reason] in [destination]'\n\nExample: 'apply gatepass for 10am to 11am for meeting in client office'"
+    },
+    {
+      "instruction": "How do I apply for missed punch?",
+      "output": "You can apply for missed punch using commands like:\n- 'apply missed punch for today in 9am out 6pm for forgot'\n- 'apply missed punch for yesterday in 10am for system issue'\n- 'apply missed punch for 15 October in 9am out 5pm for device problem'\n\nFormat: 'apply missed punch for [date] in [in_time] out [out_time] for [reason]'\n\nSupported reasons:\n- forgot\n- system issue\n- device problem\n- network issue\n- other"
+    },
+    {
+      "instruction": "How do I check holidays?",
+      "output": "You can check holidays using various commands:\n\n1. Today's holiday:\n- 'today holiday'\n- 'is today a holiday?'\n\n2. Tomorrow's holiday:\n- 'tomorrow holiday'\n- 'is tomorrow a holiday?'\n\n3. Next holiday:\n- 'next holiday'\n- 'when is the next holiday?'\n\n4. Previous holiday:\n- 'previous holiday'\n- 'last holiday'\n\n5. Monthly holidays:\n- 'holiday list for October 2025'\n- 'holidays in December 2025'\n- 'current month holidays'\n\n6. Yearly holidays:\n- 'holidays for 2025'\n- 'all holidays this year'\n\n7. Next month holidays:\n- 'next month holidays'\n- 'agle mahine chhutti'"
+    },
+    {
+      "instruction": "apply leave for tomorrow for personal work",
+      "output": "✅ Leave applied!\n📅 Tomorrow → Tomorrow\n📝 Reason: personal work\n🏷️ Category: Unpaid Leave - (UPL)"
+    },
+    {
+      "instruction": "apply casual leave for 15-17 December 2025 for family function",
+      "output": "✅ Leave applied!\n📅 15 Dec, 2025 → 17 Dec, 2025\n📝 Reason: family function\n🏷️ Category: Casual Leave (CL)"
+    },
+    {
+      "instruction": "apply gatepass for 10am to 11am for meeting",
+      "output": "✅ Gate Pass applied! 2025-10-20 10:00:00 → 2025-10-20 11:00:00, Reason: meeting, Destination: Office"
+    },
+    {
+      "instruction": "apply missed punch for today in 9am out 6pm for forgot",
+      "output": "✅ Missed Punch applied successfully!\n📅 Date: Today\n🕓 Type: Both\n🔹 In: 9:00 AM | Out: 6:00 PM\n📝 Reason: forgot"
+    },
+    {
+      "instruction": "today holiday",
+      "output": "✅ Today is Gandhi Jayanti"
+    },
+    {
+      "instruction": "Show attendance report for October 2025",
+      "output": "📒 Attendance Register (October 2025, 1-31):\n\n[Table showing employee names and daily status]\n\n📊 Detailed Report:\n\n[Individual employee details with in/out times, work hours, late status, overtime, remarks]\n\n📥 Download Excel: /download_excel/"
+    },
+    {
+      "instruction": "Show holidays for October 2025",
+      "output": "🎉 Holidays in October 2025:\n\nDate | Holiday\n--- | ---\n2025-10-02 | Gandhi Jayanti\n2025-10-08 | Dussehra\n2025-10-12 | Eid-e-Milad\n\n📥 Download Excel: /download_excel/"
+    },
+    {
+      "instruction": "Show pending leave approvals",
+      "output": "To see pending leave approvals, ask:\n- 'pending leave'\n- 'pending leaves'\n\nThis will show all leave requests waiting for your approval with employee details, dates, and reasons."
+    },
+    {
+      "instruction": "Show pending gatepass approvals",
+      "output": "To see pending gatepass approvals, ask:\n- 'pending gatepass'\n\nThis will show all gatepass requests waiting for approval with employee details, timings, reasons, and destinations."
+    },
+    {
+      "instruction": "Show my missed punch requests",
+      "output": "To view your missed punch requests, ask:\n- 'my missed punch'\n- 'my missed punch list'\n- 'my missed'\n\nThis will show all your submitted missed punch requests with their status, dates, times, and reasons."
+    },
+    {
+      "instruction": "Show absent employees for 20 October 2025",
+      "output": "📅 2025-10-20 Absent: John Smith, Sarah Johnson, Mike Wilson\n\n[Shows list of employees who were absent on the specified date]"
+    },
+    {
+      "instruction": "Show employees who came after 10am on 20 October",
+      "output": "⏰ Employees after 10am on 2025-10-20: John Smith (2025-10-20, 10:15), Sarah Johnson (2025-10-20, 10:30)\n\n📥 Download Excel: /download_excel/"
+    },
+    {
+      "instruction": "next holiday",
+      "output": "📅 Next holiday is Dussehra (2025-10-08 → 2025-10-08)."
+    },
+    {
+      "instruction": "previous holiday",
+      "output": "📅 Last holiday was Gandhi Jayanti (2025-10-02 → 2025-10-02)."
+    }
+  ]
+}

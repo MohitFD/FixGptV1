@@ -1,0 +1,29 @@
+if __name__ == "__main__":
+    import sys
+
+    print("\n🤖 FixHR Intent Model Interactive Tester")
+    print("Type something to test (type 'exit' to quit)\n")
+    sys.stdout.flush()
+
+    # --- Force keep alive ---
+    while True:
+        try:
+            text = input(">> ").strip()
+        except EOFError:
+            print("EOF received, exiting.")
+            break
+        except KeyboardInterrupt:
+            print("KeyboardInterrupt, exiting.")
+            break
+
+        if not text:
+            continue
+        if text.lower() == "exit":
+            print("👋 Exiting FixHR tester...")
+            break
+
+        try:
+            intent = predict_intent(text)
+            print(f"→ Intent: {intent}\n")
+        except Exception as e:
+            print(f"⚠️ Error: {e}")

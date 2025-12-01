@@ -1,0 +1,19 @@
+import json
+
+files = [
+    "dataset/intents_cleaned.json",
+    "dataset/generated_all_hr_dataset.json"
+]
+
+merged = {}
+
+for file in files:
+    with open(file, "r", encoding="utf-8") as f:
+        data = json.load(f)
+        for k, v in data.items():
+            merged.setdefault(k, []).extend(v)
+
+with open("dataset/intents_final.json", "w", encoding="utf-8") as f:
+    json.dump(merged, f, indent=2, ensure_ascii=False)
+
+print("✅ Final dataset ready → dataset/intents_final.json")

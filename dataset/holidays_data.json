@@ -1,0 +1,48 @@
+{
+  "train": [
+    {
+      "instruction": "How do I check holidays?",
+      "output": "You can check holidays using various commands:\n\n1. Today's holiday:\n- 'today holiday'\n- 'is today a holiday?'\n\n2. Tomorrow's holiday:\n- 'tomorrow holiday'\n- 'is tomorrow a holiday?'\n\n3. Next holiday:\n- 'next holiday'\n- 'when is the next holiday?'\n\n4. Previous holiday:\n- 'previous holiday'\n- 'last holiday'\n\n5. Monthly holidays:\n- 'holiday list for October 2025'\n- 'holidays in December 2025'\n- 'current month holidays'\n\n6. Yearly holidays:\n- 'holidays for 2025'\n- 'all holidays this year'\n\n7. Next month holidays:\n- 'next month holidays'\n- 'agle mahine chhutti'"
+    },
+    {
+      "instruction": "Is today a holiday?",
+      "output": "To check if today is a holiday, I will:\n1. Fetch today's date\n2. Check against the holiday list\n3. Return the holiday name if it's a holiday, or confirm it's a working day\n\nAsk: 'today holiday' for the result."
+    },
+    {
+      "instruction": "Show holidays for October 2025",
+      "output": "🎉 Holidays in October 2025:\n\nDate | Holiday\n--- | ---\n2025-10-02 | Gandhi Jayanti\n2025-10-08 | Dussehra\n2025-10-12 | Eid-e-Milad\n\n📥 Download Excel: /download_excel/"
+    },
+    {
+      "instruction": "Show next month holidays",
+      "output": "🎉 Holidays in November 2025:\n\nDate | Holiday\n--- | ---\n2025-11-01 | Diwali\n2025-11-02 | Bhai Dooj\n2025-11-15 | Guru Nanak Jayanti"
+    },
+    {
+      "instruction": "Show all holidays for 2025",
+      "output": "🎉 Holidays in 2025:\n\nDate | Holiday\n--- | ---\n2025-01-26 | Republic Day\n2025-03-08 | Holi\n2025-04-14 | Ambedkar Jayanti\n2025-05-01 | Labour Day\n2025-08-15 | Independence Day\n2025-10-02 | Gandhi Jayanti\n2025-10-08 | Dussehra\n2025-11-01 | Diwali\n2025-12-25 | Christmas\n\n📥 Download Excel: /download_excel/"
+    },
+    {
+      "instruction": "today holiday",
+      "output": "✅ Today is Gandhi Jayanti"
+    },
+    {
+      "instruction": "tomorrow holiday",
+      "output": "❌ Tomorrow (2025-10-21) is not a holiday."
+    },
+    {
+      "instruction": "next holiday",
+      "output": "📅 Next holiday is Dussehra (2025-10-08 → 2025-10-08)."
+    },
+    {
+      "instruction": "previous holiday",
+      "output": "📅 Last holiday was Gandhi Jayanti (2025-10-02 → 2025-10-02)."
+    },
+    {
+      "instruction": "current month holidays",
+      "output": "🎉 Holidays in October 2025:\n\nDate | Holiday\n--- | ---\n2025-10-02 | Gandhi Jayanti\n2025-10-08 | Dussehra\n2025-10-12 | Eid-e-Milad\n\n📥 Download Excel: /download_excel/"
+    },
+    {
+      "instruction": "holiday list for December 2025",
+      "output": "🎉 Holidays in December 2025:\n\nDate | Holiday\n--- | ---\n2025-12-25 | Christmas\n\n📥 Download Excel: /download_excel/"
+    }
+  ]
+}

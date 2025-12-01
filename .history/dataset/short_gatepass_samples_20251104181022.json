@@ -1,0 +1,25 @@
+{
+  "train": [
+    {"text": "mujhe aaj aadhe ghante ke liye jana hai", "label": "apply_gatepass"},
+    {"text": "thodi der ke liye bahar jana hai", "label": "apply_gatepass"},
+    {"text": "1 ghante ke liye gatepass chahiye", "label": "apply_gatepass"},
+    {"text": "mujhe aadhe ghante ka gatepass chahiye", "label": "apply_gatepass"},
+    {"text": "office se thodi der ke liye nikalna hai", "label": "apply_gatepass"},
+    {"text": "ek ghante ke liye bank kaam se bahar jana hai", "label": "apply_gatepass"},
+    {"text": "aaj 4 baje se 5 baje tak gatepass chahiye", "label": "apply_gatepass"},
+    {"text": "sir mujhe 2 baje se 3 baje tak jaana hai", "label": "apply_gatepass"},
+    {"text": "chhoti outing ke liye gatepass", "label": "apply_gatepass"},
+    {"text": "aaj meeting ke liye bahar jana hai", "label": "apply_gatepass"},
+    {"text": "mujhe aadhe ghante ke liye bahar jana hai", "label": "apply_gatepass"},
+    {"text": "thodi der ke liye office se nikalna hai", "label": "apply_gatepass"},
+    {"text": "1 ghante ke liye gatepass chahiye", "label": "apply_gatepass"},
+    {"text": "bank kaam ke liye 2 baje se 3 baje tak gatepass", "label": "apply_gatepass"},
+    {"text": "client meeting ke liye thodi der jana hai", "label": "apply_gatepass"},
+    {"text": "sir mujhe aadha ghanta bahar jana hai", "label": "apply_gatepass"},
+    {"text": "ek ghante ke liye permission chahiye", "label": "apply_gatepass"},
+    {"text": "bahar jana hai ek meeting ke liye", "label": "apply_gatepass"},
+    {"text": "thodi der ke liye gatepass required hai", "label": "apply_gatepass"},
+    {"text": "mujhe chhoti outing ke liye gatepass chahiye", "label": "apply_gatepass"}
+  ]
+}
+

@@ -1,0 +1,62 @@
+print("🔥 DEBUG: Script started running...")
+
+import json
+import torch
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+
+# Load trained model & tokenizer
+model_path = "trained_model"
+tokenizer = AutoTokenizer.from_pretrained(model_path)
+model = AutoModelForSequenceClassification.from_pretrained(model_path)
+
+# Load label map
+with open(f"{model_path}/label_map.json", "r", encoding="utf-8") as f:
+    label_map = json.load(f)
+id2label = {v: k for k, v in label_map.items()}
+
+# Function to predict intent
+def predict_intent(text):
+    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True)
+    with torch.no_grad():
+        outputs = model(**inputs)
+        predicted_id = torch.argmax(outputs.logits, dim=1).item()
+    return id2label[predicted_id]
+
+# ---- Test Examples ----
+samples = [
+    "I want to apply leave tomorrow",
+    "Show my payslip",
+    "Need gatepass for client visit",
+    "Show holiday list for this month",
+    "Forgot to punch in today"
+]
+
+if __name__ == "__main__":
+    import sys
+
+    print("\n🤖 FixHR Intent Model Interactive Tester")
+    print("Type something to test (type 'exit' to quit)\n")
+    sys.stdout.flush()
+
+    # --- Force keep alive ---
+    while True:
+        try:
+            text = input(">> ").strip()
+        except EOFError:
+            print("EOF received, exiting.")
+            break
+        except KeyboardInterrupt:
+            print("KeyboardInterrupt, exiting.")
+            break
+
+        if not text:
+            continue
+        if text.lower() == "exit":
+            print("👋 Exiting FixHR tester...")
+            break
+
+        try:
+            intent = predict_intent(text)
+            print(f"→ Intent: {intent}\n")
+        except Exception as e:
+            print(f"⚠️ Error: {e}")

@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FixHR — Login</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f1115;
+      --bg-2: #0b0d12;
+      --card: #11131a;
+      --field-bg: #0c0f16;
+      --text: #e5e7eb;
+      --muted: #a3a8b3;
+      --accent: #10a37f;
+      --accent-2: #2dd4bf;
+      --error: #ef4444;
+      --border: #1c2030;
+      --ring: rgba(16, 163, 127, .35);
+      --rad1: #152032;
+      --rad2: #0f1b26;
+    }
+    [data-theme="light"] {
+      --bg: #f7f8fb;
+      --bg-2: #ffffff;
+      --card: #ffffff;
+      --field-bg: #f3f4f6;
+      --text: #111827;
+      --muted: #6b7280;
+      --accent: #10a37f;
+      --accent-2: #14b8a6;
+      --error: #dc2626;
+      --border: #e5e7eb;
+      --ring: rgba(16, 163, 127, .18);
+      --rad1: #e6fffa;
+      --rad2: #eef2ff;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; font-family: 'Inter', system-ui; }
+    body {
+      color: var(--text);
+      background: radial-gradient(1200px 800px at 10% -10%, var(--rad1) 0%, transparent 60%),
+                  radial-gradient(900px 700px at 110% 10%, var(--rad2) 0%, transparent 55%),
+                  linear-gradient(180deg, var(--bg), var(--bg-2));
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .wrap { width: 100%; max-width: 440px; }
+    .brand { display: flex; align-items: center; gap: 12px; justify-content: center; margin-bottom: 18px; }
+    .logo { width: 36px; height: 36px; border-radius: 12px; position: relative; overflow: hidden;
+      background: conic-gradient(from 140deg at 50% 50%, #0d7a61, #10a37f, #2dd4bf, #0d7a61);
+      filter: drop-shadow(0 8px 24px rgba(16,163,127,.35)); }
+    .logo::after { content: ""; position: absolute; inset: 2px; border-radius: 10px; background: #0e121a; }
+    .title { text-align: center; font-weight: 700; letter-spacing: -0.02em; }
+    .subtitle { text-align: center; color: var(--muted); margin-top: 6px; font-size: 14px; }
+    .card {
+      border-radius: 16px; padding: 24px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border: 1px solid var(--border); box-shadow: 0 10px 40px rgba(0,0,0,.45);
+      backdrop-filter: blur(6px);
+    }
+    label { display:block; font-size: 13px; color: var(--muted); margin: 14px 0 8px; }
+    .field { display: flex; align-items: center; gap: 10px; background: var(--field-bg);
+      border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; transition: .2s; }
+    .field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 6px var(--ring); }
+    .field input { flex: 1; background: transparent; border: 0; outline: 0; color: var(--text); font-size: 15px; }
+    .row { display: flex; align-items: center; justify-content: space-between; font-size: 14px; color: var(--muted); }
+    .row a { color: var(--text); text-decoration: none; opacity: .9; }
+    .actions { margin-top: 18px; display: grid; gap: 10px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; border-radius: 12px;
+      padding: 12px 14px; font-weight: 600; cursor: pointer; background: var(--card); color: var(--text); border: 1px solid var(--border); }
+    .btn.primary { background: linear-gradient(180deg, var(--accent), #0d7a61); border: none; }
+    .error { display:none; margin-top: 8px; color: var(--error); font-size: 13px; }
+    .footer { position:fixed; left:0; right:0; bottom:12px; text-align:center; color:var(--muted); font-size:12px; opacity:.9 }
+  </style>
+</head>
+
+<body>
+  <main class="wrap">
+    <div class="brand">
+      <div class="logo">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <path d="M12 3l7 4v10l-7 4-7-4V7l7-4z" stroke="#10a37f" stroke-width="1.5"/>
+          <circle cx="12" cy="12" r="2.5" fill="#2dd4bf"/>
+        </svg>
+      </div>
+      <h1 class="title">FixHR</h1>
+    </div>
+    <p class="subtitle">Login to continue</p>
+
+    <section class="card">
+      <form id="loginForm" novalidate>
+        <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+        <label>Email</label>
+        <div class="field">
+          <input type="email" name="email" placeholder="you@company.com" required>
+        </div>
+
+        <label>Password</label>
+        <div class="field">
+          <input type="password" name="password" placeholder="••••••••" minlength="6" required>
+          <button type="button" id="pwToggle">👁️</button>
+        </div>
+
+        <div class="row">
+          <label><input type="checkbox" name="remember" style="accent-color: var(--accent)"> Remember me</label>
+          <a href="#">Forgot password?</a>
+        </div>
+
+        <p class="error" id="error"></p>
+
+        <div class="actions">
+          <button class="btn primary" type="submit" id="submitBtn">Login</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <footer class="footer">Powered by <strong>Fixing Dots</strong> — © 2025</footer>
+
+  <script>
+    const pwToggle = document.getElementById("pwToggle");
+    const form = document.getElementById("loginForm");
+    const errorBox = document.getElementById("error");
+    const btn = document.getElementById("submitBtn");
+
+    pwToggle.onclick = () => {
+      const pwd = form.password;
+      pwd.type = pwd.type === "password" ? "text" : "password";
+    };
+
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      errorBox.style.display = "none";
+      btn.disabled = true;
+      btn.textContent = "Signing in...";
+
+      const body = {
+        email: form.email.value.trim(),
+        password: form.password.value,
+        remember: form.remember.checked
+      };
+
+      try {
+        const resp = await fetch("/login/api/", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": form.csrfmiddlewaretoken.value
+          },
+          body: JSON.stringify(body)
+        });
+        const data = await resp.json();
+
+        if (data.status === "success") {
+          window.location.href = data.next || "/dashboard/";
+        } else {
+          throw new Error(data.message || "Invalid login");
+        }
+      } catch (err) {
+        errorBox.textContent = err.message;
+        errorBox.style.display = "block";
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Login";
+      }
+    };
+  </script>
+</body>
+</html>

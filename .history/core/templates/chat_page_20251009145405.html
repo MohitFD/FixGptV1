@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FixGPT.ai — Chat</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f1115;
+      --card: #1a1c25;
+      --border: #1c2030;
+      --text: #e5e7eb;
+      --accent: #10a37f;
+      --muted: #a3a8b3;
+      --approve: #16a34a;
+      --reject: #ef4444;
+    }
+    body {
+      margin: 0; height: 100vh; display: flex;
+      font-family: 'Inter', sans-serif;
+      background: var(--bg); color: var(--text);
+      overflow: hidden;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 260px; background: #11131a;
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+    }
+    .brand {
+      padding: 16px; border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .brand .user-name { font-weight: 600; }
+    .sidebar-btn {
+      padding: 10px; margin: 10px; background: var(--card);
+      border-radius: 8px; cursor: pointer;
+      border: 1px solid var(--border); text-align: center;
+    }
+    .sidebar-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Chat Area */
+    .chat-container { flex: 1; display: flex; flex-direction: column; }
+    .chat-header {
+      padding: 16px; border-bottom: 1px solid var(--border);
+      font-weight: 600; display: flex; justify-content: space-between;
+    }
+    .version-chip {
+      background: var(--accent); color: #fff;
+      border-radius: 20px; padding: 4px 12px;
+    }
+
+    /* Messages */
+    .chat-messages {
+      flex: 1; padding: 20px; overflow-y: auto;
+      display: flex; flex-direction: column;
+    }
+    .msg {
+      max-width: 75%; margin-bottom: 12px;
+      padding: 12px 16px; border-radius: 12px; line-height: 1.5;
+      word-wrap: break-word;
+    }
+    .msg.user {
+      background: var(--accent); color: #fff;
+      margin-left: auto; border-bottom-right-radius: 4px;
+    }
+    .msg.bot {
+      background: var(--card); color: var(--text);
+      margin-right: auto; border: 1px solid var(--accent);
+      border-bottom-left-radius: 4px;
+    }
+
+    /* Input */
+    .chat-input {
+      display: flex; padding: 16px;
+      border-top: 1px solid var(--border); gap: 8px;
+    }
+    textarea {
+      flex: 1; background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text);
+      padding: 10px; resize: none;
+    }
+    #sendBtn {
+      background: var(--accent); color: #fff;
+      border: none; border-radius: 10px;
+      padding: 0 20px; font-weight: 600; cursor: pointer;
+    }
+
+    /* GatePass Cards */
+    .gatepass-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-top: 8px;
+      padding: 10px;
+    }
+    .btn {
+      padding: 5px 10px;
+      margin: 4px;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+    .approve { background: var(--approve); color: white; }
+    .reject { background: var(--reject); color: white; }
+    .status-text {
+      margin-top: 8px; font-weight: 600;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="user-name">{{ name }}</div>
+      <button class="collapse-btn">☰</button>
+    </div>
+    <div class="sidebar-btn" id="newChatBtn">➕ New Chat</div>
+    <div class="sidebar-btn" id="logoutBtn">🚪 Logout</div>
+  </aside>
+
+  <!-- Chat Section -->
+  <section class="chat-container">
+    <div class="chat-header">
+      <span>FixGPT.ai</span>
+      <span class="version-chip">v1.0.0</span>
+    </div>
+
+    <div class="chat-messages" id="chatMessages"></div>
+
+    <div class="chat-input">
+      <textarea id="msgInput" rows="1" placeholder="Type your message..."></textarea>
+      <button id="sendBtn">Send</button>
+    </div>
+  </section>
+
+  <script>
+  // 🔹 Store locally which gatepasses are approved/rejected
+  const gatepassStatus = {}; // e.g. { "3": "Approved", "5": "Rejected" }
+
+  // ✅ Send message
+  async function sendMsg(msgText = null) {
+    const msgInput = document.getElementById("msgInput");
+    const chatMessages = document.getElementById("chatMessages");
+
+    let msg = msgText || msgInput.value.trim();
+    if (!msg) return;
+
+    if (!msgText) appendMessage("user", msg);
+
+    const resp = await fetch("/api/chat/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": "{{ csrf_token }}"
+      },
+      body: JSON.stringify({ message: msg })
+    });
+
+    const data = await resp.json();
+    renderBotReply(data.reply);
+
+    if (!msgText) msgInput.value = "";
+  }
+
+  // ✅ Append message
+  function appendMessage(role, text) {
+    const chatMessages = document.getElementById("chatMessages");
+    const div = document.createElement("div");
+    div.className = "msg " + role;
+    div.textContent = text;
+    chatMessages.appendChild(div);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  // ✅ Render bot reply (GatePass List)
+  function renderBotReply(reply) 
+    const box = document.getElementById("chatMessages");
+
+    if (reply.includes("📋 Pending GatePass Approvals:")) {
+      const div = document.createElement("div");
+      div.className = "msg bot";
+      div.innerHTML = "<b>Bot:</b> Pending GatePass Approvals:";
+      box.appendChild(div);
+
+      let currentCard = "";
+      reply.split("\n").forEach(line => {
+        if (line.startsWith("- ID:")) {
+          currentCard = `<div class='gatepass-card'><p>${line}</p>`;
+        } else if (line.includes("👉 Approve")) {
+          const cmd = line.replace("👉 Approve:", "").trim();
+          const id = extractId(cmd);
+          const status = gatepassStatus[id];
+
+           if (!status) {
+          currentCard += `<button class='btn reject' onclick="handleGatepassAction(this, '${cmd}', 'Rejected')">Reject</button>`;
+        }
+        currentCard += `</div>`;
+        box.innerHTML += currentCard;
+        currentCard = "";
+      }
+    });
+
+    box.scrollTop = box.scrollHeight;
+    return; // ✅ stop here if handled gatepass
+  }
+
+    
+
+  // ---------------- LEAVE APPROVALS ----------------
+  if (reply.includes("📋 Pending Leave Approvals:")) {
+    const div = document.createElement("div");
+    div.className = "msg bot";
+    div.innerHTML = "<b>Bot:</b> Pending Leave Approvals:";
+    box.appendChild(div);
+
+    let currentCard = "";
+    reply.split("\n").forEach(line => {
+      if (line.startsWith("- Leave ID:")) {
+        currentCard = `<div class='gatepass-card'><p>${line}</p>`;
+      } else if (line.includes("👉 Approve")) {
+        const cmd = line.replace("👉 Approve:", "").trim();
+        const id = extractId(cmd);
+        const status = gatepassStatus[id];
+
+        if (status) {
+          currentCard += statusHtml(status);
+        } else {
+          currentCard += `<button class='btn approve' onclick="handleGatepassAction(this, '${cmd}', 'Approved')">Approve</button>`;
+        }
+      } else if (line.includes("👉 Reject")) {
+        const cmd = line.replace("👉 Reject:", "").trim();
+        const id = extractId(cmd);
+        const status = gatepassStatus[id];
+
+        if (!status) {
+          currentCard += `<button class='btn reject' onclick="handleGatepassAction(this, '${cmd}', 'Rejected')">Reject</button>`;
+        }
+
+        currentCard += `</div>`;
+        box.innerHTML += currentCard;
+        currentCard = "";
+      }
+    });
+
+    box.scrollTop = box.scrollHeight;
+    return; // ✅ stop here if handled leave
+  }
+  // ✅ Extract ID number from backend command text (e.g. "approve gatepass 5")
+  function extractId(cmd) {
+    const match = cmd.match(/\d+/);
+    return match ? match[0] : null;
+  }
+
+  // ✅ HTML for status line
+  function statusHtml(type) {
+    const color = type === "Approved" ? "#16a34a" : "#ef4444";
+    const icon = type === "Approved" ? "✅" : "❌";
+    return `<p class="status-text" style="color:${color}">${type} by Chatbot ${icon}</p>`;
+  }
+
+  // ✅ Handle Approve/Reject
+  async function handleGatepassAction(btn, cmd, type) {
+    const card = btn.closest(".gatepass-card");
+    const id = extractId(cmd);
+    if (!id) return;
+
+    // Update immediately
+    gatepassStatus[id] = type;
+    card.querySelectorAll("button").forEach(b => b.disabled = true);
+    card.innerHTML += statusHtml(type);
+
+    // Send to backend
+    await sendMsg(cmd);
+
+    // Refresh list after 1s
+    setTimeout(() => sendMsg("show pending gatepass"), 1000);
+  }
+
+  // ✅ Send button + Enter
+  document.addEventListener("DOMContentLoaded", () => {
+    const sendBtn = document.getElementById("sendBtn");
+    const msgInput = document.getElementById("msgInput");
+
+    sendBtn.addEventListener("click", () => sendMsg());
+    msgInput.addEventListener("keypress", e => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMsg();
+      }
+    });
+    
+    // ✅ Logout
+    document.getElementById("logoutBtn").onclick = async () => {
+      const csrftoken = getCookie("csrftoken");
+      await fetch("/logout/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrftoken
+        }
+      });
+      window.location.href = "/login/";
+    };
+  });
+
+  // ✅ Get CSRF Token
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(";").shift();
+  }
+  </script>
+</body>
+</html>

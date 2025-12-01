@@ -1,0 +1,40 @@
+{
+  "train": [
+    {
+      "instruction": "How do I apply for leave?",
+      "output": "You can apply for leave using commands like:\n- apply leave for 10 Oct 2025 for personal reason\n- apply casual leave for tomorrow\n- apply sick leave for 15-17 December 2025\n\nSupported leave types:\n- Casual Leave (CL)\n- Sick Leave (SL)\n- Unpaid Leave (UPL)\n- Half day leave\n\nExample: 'apply leave for 10 Oct 2025 for personal reason'"
+    },
+    {
+      "instruction": "What is my leave balance?",
+      "output": "To check your leave balance, ask:\n- 'my leave balance'\n- 'leave balance'\n- 'my balance'\n\nThis will show you:\n- Total allotted leaves\n- Leaves taken\n- Remaining balance\n- Carried forward leaves"
+    },
+    {
+      "instruction": "Show me my leave requests",
+      "output": "To view your leave requests, ask:\n- 'my leaves'\n- 'my leave list'\n- 'my leave requests'\n\nThis will show all your submitted leave requests with their status (Requested, Approved, Rejected)."
+    },
+    {
+      "instruction": "How do I approve leave requests?",
+      "output": "To approve leave requests:\n1. First ask 'pending leave' to see requests\n2. Use the approve button in the UI, or\n3. Send command: 'approve leave|LEAVE_ID|EMP_D_ID|MODULE_ID|MASTER_MODULE_ID|note'\n\nExample: 'approve leave|123|45|67|89|approved'"
+    },
+    {
+      "instruction": "How do I reject leave requests?",
+      "output": "To reject leave requests:\n1. First ask 'pending leave' to see requests\n2. Use the reject button in the UI, or\n3. Send command: 'reject leave|LEAVE_ID|EMP_D_ID|MODULE_ID|MASTER_MODULE_ID|reason'\n\nExample: 'reject leave|123|45|67|89|insufficient reason'"
+    },
+    {
+      "instruction": "Show pending leave approvals",
+      "output": "To see pending leave approvals, ask:\n- 'pending leave'\n- 'pending leaves'\n\nThis will show all leave requests waiting for your approval with employee details, dates, and reasons."
+    },
+    {
+      "instruction": "apply leave for tomorrow for personal work",
+      "output": "✅ Leave applied!\n📅 Tomorrow → Tomorrow\n📝 Reason: personal work\n🏷️ Category: Unpaid Leave - (UPL)"
+    },
+    {
+      "instruction": "apply casual leave for 15-17 December 2025 for family function",
+      "output": "✅ Leave applied!\n📅 15 Dec, 2025 → 17 Dec, 2025\n📝 Reason: family function\n🏷️ Category: Casual Leave (CL)"
+    },
+    {
+      "instruction": "apply half day sick leave for today",
+      "output": "✅ Leave applied!\n📅 Today → Today\n📝 Reason: N/A\n🏷️ Category: Sick Leave (SL)"
+    }
+  ]
+}

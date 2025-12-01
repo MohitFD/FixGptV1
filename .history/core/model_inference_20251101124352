@@ -1,0 +1,38 @@
+import json
+import torch
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+
+# Load trained model & tokenizer
+model_path = "trained_model"
+tokenizer = AutoTokenizer.from_pretrained(model_path)
+model = AutoModelForSequenceClassification.from_pretrained(model_path)
+
+# Load label map
+with open(f"{model_path}/label_map.json", "r", encoding="utf-8") as f:
+    label_map = json.load(f)
+id2label = {v: k for k, v in label_map.items()}
+
+# Function to predict intent
+def predict_intent(text):
+    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True)
+    with torch.no_grad():
+        outputs = model(**inputs)
+        predicted_id = torch.argmax(outputs.logits, dim=1).item()
+    return id2label[predicted_id]
+
+# ---- Test Examples ----
+samples = [
+    "I want to apply leave tomorrow",
+    "Show my payslip",
+    "Need gatepass for client visit",
+    "Show holiday list for this month",
+    "Forgot to punch in today"
+]
+
+if __name__ == "__main__":
+    print("🤖 Type something to test (or 'exit' to quit):")
+    while True:
+        text = input(">> ")
+        if text.lower() == "exit":
+            break
+        print("→ Intent:", predict_intent(text))

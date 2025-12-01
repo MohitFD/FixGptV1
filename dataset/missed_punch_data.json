@@ -1,0 +1,40 @@
+{
+  "train": [
+    {
+      "instruction": "How do I apply for missed punch?",
+      "output": "You can apply for missed punch using commands like:\n- 'apply missed punch for today in 9am out 6pm for forgot'\n- 'apply missed punch for yesterday in 10am for system issue'\n- 'apply missed punch for 15 October in 9am out 5pm for device problem'\n\nFormat: 'apply missed punch for [date] in [in_time] out [out_time] for [reason]'\n\nSupported reasons:\n- forgot\n- system issue\n- device problem\n- network issue\n- other"
+    },
+    {
+      "instruction": "Show my missed punch requests",
+      "output": "To view your missed punch requests, ask:\n- 'my missed punch'\n- 'my missed punch list'\n- 'my missed'\n\nThis will show all your submitted missed punch requests with their status, dates, times, and reasons."
+    },
+    {
+      "instruction": "Show pending missed punch approvals",
+      "output": "To see pending missed punch approvals, ask:\n- 'pending missed punch'\n- 'missed punch list'\n\nThis will show all missed punch requests waiting for approval with employee details, dates, reasons, and approval buttons."
+    },
+    {
+      "instruction": "How do I approve missed punch requests?",
+      "output": "To approve missed punch requests:\n1. First ask 'pending missed punch' to see requests\n2. Use the approve button in the UI, or\n3. Send command: 'approve missed|MISSED_ID|EMP_D_ID|MODULE_ID|MASTER_MODULE_ID|note'\n\nExample: 'approve missed|123|45|67|89|approved'"
+    },
+    {
+      "instruction": "How do I reject missed punch requests?",
+      "output": "To reject missed punch requests:\n1. First ask 'pending missed punch' to see requests\n2. Use the reject button in the UI, or\n3. Send command: 'reject missed|MISSED_ID|EMP_D_ID|MODULE_ID|MASTER_MODULE_ID|reason'\n\nExample: 'reject missed|123|45|67|89|not approved'"
+    },
+    {
+      "instruction": "apply missed punch for today in 9am out 6pm for forgot",
+      "output": "✅ Missed Punch applied successfully!\n📅 Date: Today\n🕓 Type: Both\n🔹 In: 9:00 AM | Out: 6:00 PM\n📝 Reason: forgot"
+    },
+    {
+      "instruction": "apply missed punch for yesterday in 10am for system issue",
+      "output": "✅ Missed Punch applied successfully!\n📅 Date: Yesterday\n🕓 Type: In Only\n🔹 In: 10:00 AM | Out: -\n📝 Reason: system issue"
+    },
+    {
+      "instruction": "apply missed punch for 15 October out 5pm for device problem",
+      "output": "✅ Missed Punch applied successfully!\n📅 Date: 15 Oct, 2025\n🕓 Type: Out Only\n🔹 In: - | Out: 5:00 PM\n📝 Reason: device problem"
+    },
+    {
+      "instruction": "my missed punch list",
+      "output": "📋 Your Missed Punch Requests:\n\n[Shows your missed punch cards with dates, in/out times, reasons, types, status, and approver details]"
+    }
+  ]
+}

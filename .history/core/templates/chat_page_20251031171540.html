@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FixGPT.ai — Chat</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f1115;
+      --card: #1a1c25;
+      --border: #1c2030;
+      --text: #e5e7eb;
+      --accent: #10a37f;
+      --muted: #a3a8b3;
+      --approve: #16a34a;
+      --reject: #ef4444;
+    }
+    body {
+      margin: 0; height: 100vh; display: flex;
+      font-family: 'Inter', sans-serif;
+      background: var(--bg); color: var(--text);
+      overflow: hidden;
+    }
+    .sidebar {
+      width: 260px; background: #11131a;
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+    }
+    .brand {
+      padding: 16px; border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .brand .user-name { font-weight: 600; }
+    .sidebar-btn {
+      padding: 10px; margin: 10px; background: var(--card);
+      border-radius: 8px; cursor: pointer;
+      border: 1px solid var(--border); text-align: center;
+    }
+    .sidebar-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .chat-container { flex: 1; display: flex; flex-direction: column; }
+    .chat-header {
+      padding: 16px; border-bottom: 1px solid var(--border);
+      font-weight: 600; display: flex; justify-content: space-between;
+    }
+    .version-chip {
+      background: var(--accent); color: #fff;
+      border-radius: 20px; padding: 4px 12px;
+    }
+
+    .chat-messages {
+      flex: 1; padding: 20px; overflow-y: auto;
+      display: flex; flex-direction: column;
+    }
+    .msg {
+      max-width: 75%; margin-bottom: 12px;
+      padding: 12px 16px; border-radius: 12px; line-height: 1.5;
+      word-wrap: break-word;
+    }
+    .msg.user {
+      background: var(--accent); color: #fff;
+      margin-left: auto; border-bottom-right-radius: 4px;
+    }
+    .msg.bot {
+      background: var(--card); color: var(--text);
+      margin-right: auto; border: 1px solid var(--accent);
+      border-bottom-left-radius: 4px;
+    }
+
+    .chat-input {
+      display: flex; padding: 16px;
+      border-top: 1px solid var(--border); gap: 8px;
+    }
+    textarea {
+      flex: 1; background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text);
+      padding: 10px; resize: none;
+    }
+    #sendBtn {
+      background: var(--accent); color: #fff;
+      border: none; border-radius: 10px;
+      padding: 0 20px; font-weight: 600; cursor: pointer;
+    }
+
+    .gatepass-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-top: 8px;
+      padding: 10px;
+    }
+    .btn {
+      padding: 5px 10px;
+      margin: 4px;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+    .approve { background: var(--approve); color: white; }
+    .reject { background: var(--reject); color: white; }
+    .status-text { margin-top: 8px; font-weight: 600; }
+  </style>
+</head>
+
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="user-name">{{ name }}</div>
+      <button class="collapse-btn">☰</button>
+    </div>
+    <div class="sidebar-btn" id="newChatBtn">➕ New Chat</div>
+    <div class="sidebar-btn" id="logoutBtn">🚪 Logout</div>
+  </aside>
+
+  <section class="chat-container">
+    <div class="chat-header">
+      <span>FixGPT.ai</span>
+      <span class="version-chip">v1.0.0</span>
+    </div>
+
+    <div class="chat-messages" id="chatMessages"></div>
+
+    <div class="chat-input">
+      <textarea id="msgInput" rows="1" placeholder="Type your message..."></textarea>
+      <button id="sendBtn">Send</button>
+    </div>
+  </section>
+
+  <script>
+  async function sendMsg(msgText = null) {
+    const msgInput = document.getElementById("msgInput");
+    let msg = msgText || msgInput.value.trim();
+    if (!msg) return;
+    if (!msgText) appendMessage("user", msg);
+
+    const resp = await fetch("/api/chat/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRFToken": "{{ csrf_token }}" },
+      body: JSON.stringify({ message: msg })
+    });
+
+    const data = await resp.json();
+    console.log("📦 Response:", data);
+
+    if (data.reply_type === "leave_cards") renderLeaveCards(data);
+    else if (data.reply_type === "gatepass_cards") renderGatepassCards(data);
+    else if (data.reply_type === "missed_cards") renderMissedCards(data);
+    else if (data.reply_type === "my_missed_cards") renderMyMissedCards(data);
+    else if (data.reply_type === "my_leaves") renderMyLeaves(data);
+    else if (data.reply_type === "leave_balance") renderLeaveBalance(data);
+    else if (data.reply_type === "attendance") renderAttendance(data);
+    else if (data.reply_type === "attendance") renderPayslip(data);
+    else renderBotReply(data.reply);
+
+    if (!msgText) msgInput.value = "";
+  }
+
+  function appendMessage(role, text) {
+    const box = document.getElementById("chatMessages");
+    const div = document.createElement("div");
+    div.className = "msg " + role;
+    div.textContent = text;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function renderBotReply(reply) {
+    appendMessage("bot", reply);
+  }
+
+  function renderAttendance(data) {
+    const box = document.getElementById("chatMessages");
+    const container = document.createElement("div");
+    container.className = "msg bot";
+    container.innerHTML = `<b>${data.reply}</b>`;
+    box.appendChild(container);
+
+    // Register table
+    const regWrap = document.createElement('div');
+    regWrap.className = 'gatepass-card';
+    const regTable = document.createElement('table');
+    regTable.style.width = '100%';
+    regTable.style.borderCollapse = 'collapse';
+
+    const thead = document.createElement('thead');
+    const trh = document.createElement('tr');
+    data.register.headers.forEach(h => {
+      const th = document.createElement('th');
+      th.textContent = h;
+      th.style.borderBottom = '1px solid var(--border)';
+      th.style.textAlign = 'left';
+      th.style.padding = '6px 8px';
+      trh.appendChild(th);
+    });
+    thead.appendChild(trh);
+    regTable.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    data.register.rows.forEach(r => {
+      const tr = document.createElement('tr');
+      const nameTd = document.createElement('td');
+      nameTd.textContent = r.name;
+      nameTd.style.padding = '6px 8px';
+      tr.appendChild(nameTd);
+      r.values.forEach(v => {
+        const td = document.createElement('td');
+        td.textContent = v;
+        td.style.padding = '6px 8px';
+        td.style.fontWeight = v === 'ABS' ? '600' : '400';
+        td.style.color = v === 'ABS' ? '#ef4444' : v === 'P' ? '#16a34a' : v === 'HD' || v === 'HP' ? '#f59e0b' : '#e5e7eb';
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    regTable.appendChild(tbody);
+    regWrap.appendChild(regTable);
+    box.appendChild(regWrap);
+
+    // Details sections
+    data.details.forEach(section => {
+      const card = document.createElement('div');
+      card.className = 'gatepass-card';
+      const title = document.createElement('div');
+      title.style.fontWeight = '600';
+      title.style.marginBottom = '6px';
+      title.textContent = `Details — ${section.emp_name}`;
+      card.appendChild(title);
+
+      const tbl = document.createElement('table');
+      tbl.style.width = '100%';
+      tbl.style.borderCollapse = 'collapse';
+      const thdr = document.createElement('tr');
+      ["Date","Status","In","Out","Hours","Late","OT","Remark"].forEach(h => {
+        const th = document.createElement('th');
+        th.textContent = h;
+        th.style.borderBottom = '1px solid var(--border)';
+        th.style.textAlign = 'left';
+        th.style.padding = '6px 8px';
+        thdr.appendChild(th);
+      });
+      tbl.appendChild(thdr);
+
+      section.rows.slice(0, 20).forEach(r => {
+        const tr = document.createElement('tr');
+        const cells = [r.date, r.status, r.in_time, r.out_time, r.work_hrs, r.is_late ? 'Yes' : 'No', r.overtime_hours, r.remark];
+        cells.forEach(c => {
+          const td = document.createElement('td');
+          td.textContent = c || '-';
+          td.style.padding = '6px 8px';
+          tr.appendChild(td);
+        });
+        tbl.appendChild(tr);
+      });
+
+      if (section.rows.length > 20) {
+        const more = document.createElement('div');
+        more.style.marginTop = '6px';
+        more.style.color = 'var(--muted)';
+        more.textContent = `…and ${section.rows.length - 20} more (type 'show full report')`;
+        card.appendChild(more);
+      }
+
+      card.appendChild(tbl);
+      box.appendChild(card);
+    });
+
+    box.scrollTop = box.scrollHeight;
+  }
+
+  // ✅ LEAVE LIST + APPROVE / REJECT
+  function renderLeaveCards(data) {
+    const box = document.getElementById("chatMessages");
+    const div = document.createElement("div");
+    div.className = "msg bot";
+    div.innerHTML = `<b>Bot:</b> ${data.reply}`;
+    box.appendChild(div);
+
+    const groups = { Requested: [], Approved: [], Rejected: [], Other: [] };
+    data.leaves.forEach(lv => {
+      const status = (lv.status_name || "Requested").toLowerCase();
+      const key = status.includes("request") ? "Requested" : status.includes("approve") ? "Approved" : status.includes("reject") ? "Rejected" : "Other";
+      groups[key].push(lv);
+    });
+
+    const renderGroup = (title, items) => {
+      if (!items.length) return;
+      const header = document.createElement("div");
+      header.className = "msg bot";
+      header.innerHTML = `<b>${title}</b>`;
+      box.appendChild(header);
+      items.forEach(lv => {
+      const card = document.createElement("div");
+      card.className = "gatepass-card";
+      card.innerHTML = `
+        <p><b>${lv.emp_name}</b> (${lv.leave_type})</p>
+        <p>${lv.start_date} → ${lv.end_date}</p>
+          <p>Reason: ${lv.reason}</p>
+          <p class='status-text'><b>Status:</b> ${lv.status_name || '-'}</p>
+          ${(data.can_approve && (!lv.status_name || lv.status_name.toLowerCase().includes('request'))) ? `
+          <div>
+            <button class='btn approve' onclick="handleLeaveAction('${lv.leave_id}','${lv.emp_d_id}','${lv.module_id}','${lv.master_module_id}','approve')">Approve</button>
+            <button class='btn reject' onclick="handleLeaveAction('${lv.leave_id}','${lv.emp_d_id}','${lv.module_id}','${lv.master_module_id}','reject')">Reject</button>
+          </div>` : ``}
+        `;
+      box.appendChild(card);
+      });
+    };
+
+    renderGroup("Pending", groups.Requested);
+    renderGroup("Approved", groups.Approved);
+    renderGroup("Rejected", groups.Rejected);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  // ✅ GATEPASS LIST + APPROVE / REJECT
+  function renderGatepassCards(data) {
+    const box = document.getElementById("chatMessages");
+    const div = document.createElement("div");
+    div.className = "msg bot";
+    div.innerHTML = `<b>Bot:</b> ${data.reply}`;
+    box.appendChild(div);
+
+    const groups = { Requested: [], Approved: [], Rejected: [], Other: [] };
+    data.gatepasses.forEach(gp => {
+      const status = (gp.status_name || "Requested").toLowerCase();
+      const key = status.includes("request") ? "Requested" : status.includes("approve") ? "Approved" : status.includes("reject") ? "Rejected" : "Other";
+      groups[key].push(gp);
+    });
+
+    const renderGroup = (title, items) => {
+      if (!items.length) return;
+      const header = document.createElement("div");
+      header.className = "msg bot";
+      header.innerHTML = `<b>${title}</b>`;
+      box.appendChild(header);
+      items.forEach(gp => {
+        const card = document.createElement("div");
+        card.className = "gatepass-card";
+        card.innerHTML = `
+          <p><b>${gp.emp_name}</b></p>
+          <p>${gp.out_time} → ${gp.in_time}</p>
+          <p>Reason: ${gp.reason} | Destination: ${gp.destination}</p>
+          <p class='status-text'><b>Status:</b> ${gp.status_name || '-'}</p>
+          ${(data.can_approve && (!gp.status_name || gp.status_name.toLowerCase().includes('request'))) ? `
+          <div>
+            <button class='btn approve' onclick="handleGatepassAction('${gp.id}','${gp.emp_d_id}','${gp.module_id}','${gp.master_module_id}','approve')">Approve</button>
+            <button class='btn reject' onclick="handleGatepassAction('${gp.id}','${gp.emp_d_id}','${gp.module_id}','${gp.master_module_id}','reject')">Reject</button>
+          </div>` : ``}
+        `;
+        box.appendChild(card);
+      });
+    };
+
+    renderGroup("Pending", groups.Requested);
+    renderGroup("Approved", groups.Approved);
+    renderGroup("Rejected", groups.Rejected);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  // ✅ MISSED PUNCH LIST + APPROVE / REJECT
+  function renderMissedCards(data) {
+    const box = document.getElementById("chatMessages");
+    const div = document.createElement("div");
+    div.className = "msg bot";
+    div.innerHTML = `<b>Bot:</b> ${data.reply}`;
+    box.appendChild(div);
+
+    const groups = { Requested: [], Approved: [], Rejected: [], Other: [] };
+    data.missed.forEach(mp => {
+      const status = (mp.status_name || "Requested").toLowerCase();
+      const key = status.includes("request") ? "Requested" : status.includes("approve") ? "Approved" : status.includes("reject") ? "Rejected" : "Other";
+      groups[key].push(mp);
+    });
+
+    const renderGroup = (title, items) => {
+      if (!items.length) return;
+      const header = document.createElement("div");
+      header.className = "msg bot";
+      header.innerHTML = `<b>${title}</b>`;
+      box.appendChild(header);
+      items.forEach(mp => {
+        const card = document.createElement("div");
+        card.className = "gatepass-card";
+        card.innerHTML = `
+          <p><b>${mp.emp_name}</b></p>
+          <p>Date: ${mp.date}</p>
+          <p>Reason: ${mp.reason}</p>
+          <p class='status-text'><b>Status:</b> ${mp.status_name || '-'}</p>
+          ${(data.can_approve && (!mp.status_name || mp.status_name.toLowerCase().includes('request'))) ? `
+          <div>
+            <button class='btn approve' onclick="handleMissedAction('${mp.id}','${mp.emp_d_id}','${mp.module_id}','${mp.master_module_id}','approve')">Approve</button>
+            <button class='btn reject' onclick="handleMissedAction('${mp.id}','${mp.emp_d_id}','${mp.module_id}','${mp.master_module_id}','reject')">Reject</button>
+          </div>` : ``}
+        `;
+        box.appendChild(card);
+      });
+    };
+
+    renderGroup("Pending", groups.Requested);
+    renderGroup("Approved", groups.Approved);
+    renderGroup("Rejected", groups.Rejected);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  // ✅ MY MISSED PUNCH LIST (SELF)
+  function renderMyMissedCards(data) {
+    const box = document.getElementById("chatMessages");
+    const div = document.createElement("div");
+    div.className = "msg bot";
+    div.innerHTML = `<b>Bot:</b> ${data.reply}`;
+    box.appendChild(div);
+
+    const groups = { Requested: [], Approved: [], Rejected: [], Other: [] };
+    data.missed.forEach(mp => {
+      const status = (mp.status || "Requested").toLowerCase();
+      const key = status.includes("request") ? "Requested" : status.includes("approve") ? "Approved" : status.includes("reject") ? "Rejected" : "Other";
+      groups[key].push(mp);
+    });
+
+    const renderGroup = (title, items) => {
+      if (!items.length) return;
+      const header = document.createElement("div");
+      header.className = "msg bot";
+      header.innerHTML = `<b>${title}</b>`;
+      box.appendChild(header);
+      items.forEach(mp => {
+      const card = document.createElement("div");
+      card.className = "gatepass-card";
+      card.innerHTML = `
+        <p><b>Date:</b> ${mp.date || "-"}</p>
+        <p><b>In:</b> ${mp.in_time || "-"} | <b>Out:</b> ${mp.out_time || "-"}</p>
+        <p><b>Reason:</b> ${mp.reason || "-"}</p>
+        <p class='status-text'><b>Status:</b> ${mp.status || "-"}</p>
+      `;
+      box.appendChild(card);
+      });
+    };
+
+    renderGroup("Pending", groups.Requested);
+    renderGroup("Approved", groups.Approved);
+    renderGroup("Rejected", groups.Rejected);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  // ✅ MY LEAVES (GROUPED, NO ACTIONS)
+  function renderMyLeaves(data) {
+    const box = document.getElementById("chatMessages");
+    const div = document.createElement("div");
+    div.className = "msg bot";
+    div.innerHTML = `<b>Bot:</b> ${data.reply}`;
+    box.appendChild(div);
+
+    const groups = { Requested: [], Approved: [], Rejected: [], Other: [] };
+    data.leaves.forEach(lv => {
+      const status = (lv.status_name || "Requested").toLowerCase();
+      const key = status.includes("request") ? "Requested" : status.includes("approve") ? "Approved" : status.includes("reject") ? "Rejected" : "Other";
+      groups[key].push(lv);
+    });
+
+    const renderGroup = (title, items) => {
+      if (!items.length) return;
+      const header = document.createElement("div");
+      header.className = "msg bot";
+      header.innerHTML = `<b>${title}</b>`;
+      box.appendChild(header);
+
+      items.forEach(lv => {
+        const card = document.createElement("div");
+        card.className = "gatepass-card";
+        card.innerHTML = `
+          <p><b>${lv.leave_type}</b></p>
+          <p>${lv.start_date} → ${lv.end_date}</p>
+          <p>Reason: ${lv.reason || '-'}</p>
+          <p class='status-text'><b>Status:</b> ${lv.status_name || '-'}</p>
+        `;
+        box.appendChild(card);
+      });
+    };
+
+    renderGroup("Pending", groups.Requested);
+    renderGroup("Approved", groups.Approved);
+    renderGroup("Rejected", groups.Rejected);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  // ✅ LEAVE BALANCE (READ-ONLY)
+  function renderLeaveBalance(data) {
+    const box = document.getElementById("chatMessages");
+    const div = document.createElement("div");
+    div.className = "msg bot";
+    div.innerHTML = `<b>Bot:</b> ${data.reply}`;
+    box.appendChild(div);
+
+    (data.balances || []).forEach(item => {
+      const card = document.createElement("div");
+      card.className = "gatepass-card";
+      card.innerHTML = `
+        <p><b>${item.name || 'Leave Type'}</b></p>
+        <p><b>Allotted:</b> ${item.total_allotted || '-'} | <b>Taken:</b> ${item.total_taken || '-'} | <b>Balance:</b> ${item.total_balance || '-'}</p>
+        ${item.carried_forward ? `<p><b>Carried Forward:</b> ${item.carried_forward}</p>` : ''}
+        ${item.description ? `<p>${item.description}</p>` : ''}
+      `;
+      box.appendChild(card);
+    });
+
+    box.scrollTop = box.scrollHeight;
+  }
+
+  // ✅ HANDLERS (common for all)
+  async function handleLeaveAction(id, empDid, module_id, master_module_id, action) {
+    const cmd = `${action} leave|${id}|${empDid}|${module_id}|${master_module_id}|ok`;
+    await sendMsg(cmd);
+    setTimeout(() => sendMsg("pending leave list"), 1000);
+  }
+  async function handleGatepassAction(id, empDid, module_id, master_module_id, action) {
+    const cmd = `${action} gatepass|${id}|${empDid}|${module_id}|${master_module_id}|ok`;
+    await sendMsg(cmd);
+    setTimeout(() => sendMsg("pending gatepass list"), 1000);
+  }
+
+  async function handleMissedAction(id, empDid, module_id, master_module_id, action) {
+    const cmd = `${action} missed|${id}|${empDid}|${module_id}|${master_module_id}|ok`;
+    await sendMsg(cmd);
+    setTimeout(() => sendMsg("pending missed punch list"), 1000);
+  }
+
+  // ✅ Event Bindings
+  document.addEventListener("DOMContentLoaded", () => {
+    const sendBtn = document.getElementById("sendBtn");
+    const msgInput = document.getElementById("msgInput");
+
+    sendBtn.addEventListener("click", () => sendMsg());
+    msgInput.addEventListener("keypress", e => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault(); sendMsg();
+      }
+    });
+
+    document.getElementById("logoutBtn").onclick = async () => {
+      await fetch("/logout/", { method: "POST", headers: { "X-CSRFToken": "{{ csrf_token }}" } });
+      window.location.href = "/login/";
+    };
+  });
+  </script>
+</body>
+</html>

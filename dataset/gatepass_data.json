@@ -1,0 +1,36 @@
+{
+  "train": [
+    {
+      "instruction": "How do I apply for gatepass?",
+      "output": "You can apply for gatepass using commands like:\n- 'apply gatepass for 10am to 11am for meeting'\n- 'apply gatepass for 2pm to 4pm for client visit in Mumbai'\n- 'apply gatepass for 9am to 12pm for bank work'\n\nFormat: 'apply gatepass for [out_time] to [in_time] for [reason] in [destination]'\n\nExample: 'apply gatepass for 10am to 11am for meeting in client office'"
+    },
+    {
+      "instruction": "Show pending gatepass approvals",
+      "output": "To see pending gatepass approvals, ask:\n- 'pending gatepass'\n\nThis will show all gatepass requests waiting for approval with employee details, timings, reasons, and destinations."
+    },
+    {
+      "instruction": "How do I approve gatepass requests?",
+      "output": "To approve gatepass requests:\n1. First ask 'pending gatepass' to see requests\n2. Use the approve button in the UI, or\n3. Send command: 'approve gatepass|GATEPASS_ID|EMP_D_ID|MODULE_ID|MASTER_MODULE_ID|note'\n\nExample: 'approve gatepass|123|45|67|89|approved'"
+    },
+    {
+      "instruction": "How do I reject gatepass requests?",
+      "output": "To reject gatepass requests:\n1. First ask 'pending gatepass' to see requests\n2. Use the reject button in the UI, or\n3. Send command: 'reject gatepass|GATEPASS_ID|EMP_D_ID|MODULE_ID|MASTER_MODULE_ID|reason'\n\nExample: 'reject gatepass|123|45|67|89|not approved'"
+    },
+    {
+      "instruction": "apply gatepass for 10am to 11am for meeting",
+      "output": "✅ Gate Pass applied! 2025-10-20 10:00:00 → 2025-10-20 11:00:00, Reason: meeting, Destination: Office"
+    },
+    {
+      "instruction": "apply gatepass for 2pm to 4pm for client visit in Mumbai",
+      "output": "✅ Gate Pass applied! 2025-10-20 14:00:00 → 2025-10-20 16:00:00, Reason: client visit, Destination: Mumbai"
+    },
+    {
+      "instruction": "apply gatepass for 9am to 12pm for bank work in SBI branch",
+      "output": "✅ Gate Pass applied! 2025-10-20 09:00:00 → 2025-10-20 12:00:00, Reason: bank work, Destination: SBI branch"
+    },
+    {
+      "instruction": "pending gatepass",
+      "output": "📋 Pending GatePass Approvals:\n\n[Shows gatepass cards with employee names, out/in times, reasons, destinations, and approval buttons]"
+    }
+  ]
+}

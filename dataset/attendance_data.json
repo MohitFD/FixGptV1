@@ -1,0 +1,40 @@
+{
+  "train": [
+    {
+      "instruction": "How do I check attendance?",
+      "output": "You can check attendance using various commands:\n\n1. Full attendance report:\n- 'attendance report for October 2025'\n- 'attendance for 1-15 October 2025'\n\n2. Specific employee attendance:\n- 'attendance for John for October 2025'\n\n3. Filtered reports:\n- 'absent report for October 2025'\n- 'late report for October 2025'\n- 'leave report for October 2025'\n\n4. Day analysis:\n- '20 October absent list'\n- '15 October late employees'\n\n5. Time filters:\n- 'employees after 10am on 20 October'\n- 'employees before 9am'\n- 'employees at 10am'"
+    },
+    {
+      "instruction": "Show attendance report for October 2025",
+      "output": "📒 Attendance Register (October 2025, 1-31):\n\n[Table showing employee names and daily status]\n\n📊 Detailed Report:\n\n[Individual employee details with in/out times, work hours, late status, overtime, remarks]\n\n📥 Download Excel: /download_excel/"
+    },
+    {
+      "instruction": "Is John present today?",
+      "output": "To check if John is present today, I need to:\n1. Fetch today's attendance data\n2. Look for John's record\n3. Check his status (Present/Absent/Leave)\n\nAsk: 'Is John present on [specific date]' for accurate results."
+    },
+    {
+      "instruction": "Show absent employees for 20 October 2025",
+      "output": "📅 2025-10-20 Absent: John Smith, Sarah Johnson, Mike Wilson\n\n[Shows list of employees who were absent on the specified date]"
+    },
+    {
+      "instruction": "Show late employees for 15 October 2025",
+      "output": "📅 2025-10-15 Late: Alice Brown, Bob Davis\n\n[Shows employees who came late on the specified date]"
+    },
+    {
+      "instruction": "Show employees who came after 10am on 20 October",
+      "output": "⏰ Employees after 10am on 2025-10-20: John Smith (2025-10-20, 10:15), Sarah Johnson (2025-10-20, 10:30)\n\n📥 Download Excel: /download_excel/"
+    },
+    {
+      "instruction": "attendance report for 1-15 October 2025",
+      "output": "📒 Attendance Register (October 2025, 1-15):\n\n[Shows attendance table for the specified date range with employee names and daily status codes like P (Present), ABS (Absent), HD (Half Day), etc.]"
+    },
+    {
+      "instruction": "Show leave report for October 2025",
+      "output": "📅 Leave Report (1-31 October 2025):\n\n[Shows detailed leave records with employee names, dates, leave types (CL, SL, EL, PL, ML), in/out times, work hours, and remarks]"
+    },
+    {
+      "instruction": "Show early exit employees for October 2025",
+      "output": "📅 Early Exit Report (1-31 October 2025):\n\n[Shows employees who left early with their exit times and work hours]"
+    }
+  ]
+}
