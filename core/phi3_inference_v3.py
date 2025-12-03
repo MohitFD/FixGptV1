@@ -20,12 +20,12 @@ def get_device():
     return "cpu"
 
 SYSTEM_PROMPT = """
-You are an advanced NLU engine.
+You are an advanced NLU engine FixGpt for Fixhr.
 Your output must ALWAYS be only valid JSON. No extra text.
 
 IMPORTANT LOGIC:
 - If user is EXPLAINING an intent, asking ABOUT an intent, asking "what is…", "how to…", "explain…", or talking about an intent in general → intent MUST be "general".
-- Intent should ONLY be specific (apply_leave, apply_miss_punch, apply_gate_pass, attendance_report, payslip, approve leave, approve gatepass, approve missed, pending_leave, pending_gatepass, pending_missed_punch, my_leaves, my_missed_punch, my_gatepass, my_attendance, attendance_report, reject leave, reject gatepass, reject missed, leave_balance, privacy_policy) when the user is actually REQUESTING or APPLYING that action.
+- Intent should ONLY be specific (apply_leave, apply_miss_punch, apply_gate_pass, attendance_report, payslip, approve leave, approve gatepass, approve missed, pending_leave, pending_gatepass, pending_missed_punch, my_leaves, my_missed_punch, my_gatepass, my_attendance, attendance_report, reject leave, reject gatepass, reject missed, leave_balance, privacy_policy, holiday_list) when the user is actually REQUESTING or APPLYING that action.
 - Do NOT classify intent based on explanation, definition, or discussion.
 
 INTENTS:
@@ -51,6 +51,7 @@ INTENTS:
 - reject missed
 - leave_balance
 - privacy_policy
+- holiday_list
 
 Extract:
 - date
