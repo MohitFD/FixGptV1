@@ -6,9 +6,8 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponseBadRequest
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_http_methods
 from collections import defaultdict
-
 # Core imports for intent classification and response generation
 from core.model_inference2 import model_response
 from core.phi3_inference_v3 import intent_model_call
@@ -36,9 +35,12 @@ FIXHR_PAYSLIP_POLICY = "https://dev.fixhr.app/api/admin/payroll/generate_emp_pay
 # ---------------- Logging ----------------
 logger = logging.getLogger(__name__)
 
+
+
+
 # ---------------- Session Memory ----------------
 SESSION_MEMORY = {}
-
+CHAT_HISTORY = {}
 # ---------------- Helpers ----------------
 def md5_hash(value):
     return hashlib.md5(str(value).encode()).hexdigest()
@@ -58,6 +60,154 @@ INTENT_ALIAS = {
     "apply_miss_punch": "apply_missed_punch",
     "leave_list": "pending_leave",
 }
+
+
+
+@csrf_exempt
+def search_conversations(request):
+    user_id = request.session.get("employee_id")
+    if not user_id:
+        return JsonResponse({"ok": False, "results": [], "error": "Not logged in"})
+
+    query = request.GET.get("q", "").lower().strip()
+
+    if not query:
+        return JsonResponse({"ok": True, "results": []})
+
+    conversations = ChatConversation.objects.filter(employee_id=user_id)
+
+    results = []
+
+    for conv in conversations:
+        for m in conv.messages:
+            if query in m.get("text", "").lower():
+                results.append({
+                    "conversation_id": conv.conv_id,
+                    "title": conv.title,
+                    "matched_text": m.get("text", "")[:150],
+                    "timestamp": conv.timestamp.isoformat(),
+                })
+                break  # only one match per conversation
+
+    return JsonResponse({"ok": True, "results": results})
+
+
+# ============================================
+# 1️⃣ UPDATE views.py - Add these functions
+# ============================================
+
+# views.py - Replace all conversation functions with these
+
+from django.utils import timezone
+from .models import ChatConversation
+import uuid
+
+@csrf_exempt
+def get_conversations(request):
+    user_id = request.session.get("employee_id")
+    if not user_id:
+        return JsonResponse({"ok": False, "conversations": []})
+    
+    convs = ChatConversation.objects.filter(employee_id=user_id).order_by('-timestamp')
+    data = []
+    for c in convs:
+        data.append({
+            "id": c.conv_id,
+            "title": c.title,
+            "timestamp": c.timestamp.isoformat(),
+        })
+    return JsonResponse({"ok": True, "conversations": data})
+
+
+@csrf_exempt
+def save_conversation(request):
+    if request.method != "POST":
+        return JsonResponse({"ok": False, "error": "POST only"})
+    
+    user_id = request.session.get("employee_id")
+    if not user_id:
+        return JsonResponse({"ok": False, "error": "Not logged in"})
+    
+    try:
+        data = json.loads(request.body)
+        conv_id = data.get("conversation_id")
+        messages = data.get("messages", [])
+        
+        # Generate title
+        title = "New Chat"
+        if messages:
+            first_user_msg = next((m["text"] for m in messages if m["role"] == "user"), "")
+            title = first_user_msg[:50] + ("..." if len(first_user_msg) > 50 else "")
+        
+        if conv_id:
+            # Update existing
+            conv = ChatConversation.objects.get(conv_id=conv_id, employee_id=user_id)
+            conv.messages = messages
+            conv.title = title
+            conv.timestamp = timezone.now()
+            conv.save()
+        else:
+            # Create new
+            conv_id = str(uuid.uuid4())
+            ChatConversation.objects.create(
+                employee_id=user_id,
+                conv_id=conv_id,
+                title=title,
+                messages=messages,
+            )
+        
+        return JsonResponse({"ok": True, "conversation_id": conv_id})
+        
+    except Exception as e:
+        return JsonResponse({"ok": False, "error": str(e)})
+
+
+@csrf_exempt
+def load_conversation(request):
+    if request.method != "POST":
+        return JsonResponse({"ok": False, "error": "POST only"})
+    
+    user_id = request.session.get("employee_id")
+    if not user_id:
+        return JsonResponse({"ok": False, "error": "Not logged in"})
+    
+    try:
+        data = json.loads(request.body)
+        conv_id = data.get("conversation_id")
+        conv = ChatConversation.objects.get(conv_id=conv_id, employee_id=user_id)
+        
+        return JsonResponse({
+            "ok": True,
+            "conversation": {
+                "id": conv.conv_id,
+                "title": conv.title,
+                "messages": conv.messages,
+                "timestamp": conv.timestamp.isoformat()
+            }
+        })
+    except ChatConversation.DoesNotExist:
+        return JsonResponse({"ok": False, "error": "Not found"})
+    except Exception as e:
+        return JsonResponse({"ok": False, "error": str(e)})
+
+
+@csrf_exempt
+def delete_conversation(request):
+    if request.method != "POST":
+        return JsonResponse({"ok": False, "error": "POST only"})
+    
+    user_id = request.session.get("employee_id")
+    if not user_id:
+        return JsonResponse({"ok": False, "error": "Not logged in"})
+    
+    try:
+        data = json.loads(request.body)
+        conv_id = data.get("conversation_id")
+        ChatConversation.objects.filter(conv_id=conv_id, employee_id=user_id).delete()
+        return JsonResponse({"ok": True})
+    except Exception as e:
+        return JsonResponse({"ok": False, "error": str(e)})
+
 
 def classify_message(message: str) -> dict:
     """
@@ -1236,25 +1386,144 @@ def handle_missed_approval(msg, token):
         print("❌ Exception in missed punch approval:", traceback.format_exc())
         return f"Error in missed punch approval: {str(e)}"
 
+# def handle_privacy_policy(token):
+#     try:
+#         headers = {"Accept": "application/json", "authorization": f"Bearer {token}"}
+#         r = requests.get(FIXHR_PRIVACY_POLICY, headers=headers, timeout=15)
+#         print("📡 Privacy Policy Status:", r.status_code)
+#         print("📡 Privacy Policy Body:", r.text)
+#         return r.json()
+#     except Exception as e:
+#         return f"Error fetching privacy policy: {str(e)}"
 def handle_privacy_policy(token):
     try:
-        headers = {"Accept": "application/json", "authorization": f"Bearer {token}"}
+        headers = {
+            "Accept": "application/json",
+            "authorization": f"Bearer {token}",
+        }
         r = requests.get(FIXHR_PRIVACY_POLICY, headers=headers, timeout=15)
         print("📡 Privacy Policy Status:", r.status_code)
         print("📡 Privacy Policy Body:", r.text)
-        return r.json()
+
+        data = r.json()
+
+        # Expecting FixHR API shape:
+        # {"status": true, "message": "...", "result": [ ... ]}
+
+        if not data.get("status"):
+            # Normalized error structure
+            return {
+                "reply_type": "bot",
+                "reply": data.get("message", "Unable to fetch privacy policy right now."),
+            }
+
+        return {
+            "reply_type": "privacy_policy",
+            "reply": "Here is the latest FixHR privacy policy:",
+            "policies": data.get("result", []),
+        }
+
     except Exception as e:
-        return f"Error fetching privacy policy: {str(e)}"
+        # Still return a dict, not raw string
+        return {
+            "reply_type": "bot",
+            "reply": f"Error fetching privacy policy: {e}",
+        }
+
+import requests
+from datetime import datetime
 
 def handle_payslip_policy(token):
     try:
-        headers = {"Accept": "application/json", "authorization": f"Bearer {token}"}
+        headers = {
+            "Accept": "application/json",
+            "authorization": f"Bearer {token}",
+        }
         r = requests.get(FIXHR_PAYSLIP_POLICY, headers=headers, timeout=15)
         print("📡 Payslip Policy Status:", r.status_code)
         print("📡 Payslip Policy Body:", r.text)
-        return r.json()
+
+        data = r.json()
+
+        if not data.get("status"):
+            return {
+                "reply_type": "bot",
+                "reply": data.get("message", "Unable to fetch your payslip right now."),
+            }
+
+        slips = data.get("result", [])
+        if not slips:
+            return {
+                "reply_type": "bot",
+                "reply": "No payslips found for your account.",
+            }
+
+        # 🔍 Pick latest payslip by payroll_period.from
+        def parse_from(slip):
+            try:
+                return datetime.fromisoformat(
+                    slip.get("payroll_period", {}).get("from").replace("Z", "+00:00")
+                )
+            except Exception:
+                return datetime.min
+
+        latest = sorted(slips, key=parse_from)[-1]
+
+        # Raw values as strings from API
+        emp_name = latest.get("employee_name") or ""
+        emp_id = latest.get("employee_id") or ""
+        net_salary = latest.get("net_salary") or "0"
+        earnings = latest.get("earnings") or "0"
+        emp_ded = latest.get("employee_deductions") or "0"
+        emr_ded = latest.get("employer_deductions") or "0"
+
+        fy = latest.get("financial_year") or {}
+        period = latest.get("payroll_period") or {}
+
+        fy_year = fy.get("fy_year", "")
+        month_name = period.get("month") or period.get("pp_name") or ""
+        month_year = f"{month_name} {fy_year}" if month_name and fy_year else (month_name or fy_year or "N/A")
+
+        # Convert to numbers safely
+        def to_float(x):
+            try:
+                return float(x)
+            except Exception:
+                return 0.0
+
+        earnings_val = to_float(earnings)
+        emp_ded_val = to_float(emp_ded)
+        emr_ded_val = to_float(emr_ded)
+
+        total_deductions = emp_ded_val + emr_ded_val
+
+        payslip_obj = {
+            "emp_name": emp_name,
+            "emp_id": emp_id,
+            "month_year": month_year,
+            "net_salary": net_salary,
+            "total_earnings": f"{earnings_val:.2f}",
+            "total_deductions": f"{total_deductions:.2f}",
+            "pdf_url": latest.get("payslip_pdf_url"),
+            # For your frontend breakdown table
+            "components": [
+                {"name": "Total Earnings", "amount": f"{earnings_val:.2f}"},
+                {"name": "Employee Deductions", "amount": f"{emp_ded_val:.2f}"},
+                {"name": "Employer Deductions", "amount": f"{emr_ded_val:.2f}"},
+            ],
+        }
+
+        return {
+            "reply_type": "payslip",
+            "reply": f"Here is your payslip for {month_year}.",
+            "payslip": payslip_obj,
+        }
+
     except Exception as e:
-        return f"Error fetching payslip policy: {str(e)}"
+        return {
+            "reply_type": "bot",
+            "reply": f"Error fetching payslip: {e}",
+        }
 
 # ---------------- LOGIN ----------------
 @require_POST
@@ -1991,6 +2260,25 @@ def handle_general_chat(msg, lang="en"):
         else "I'm the FixHR assistant. Ask me anything about FixHR or HR workflows."
     )
 
+@csrf_exempt
+@require_http_methods(["GET"])  # ✅ Allow GET requests
+def chat_history(request):
+    """Return chat history for current user"""
+    user_id = request.session.get("employee_id")
+    
+    if not user_id:
+        return JsonResponse({
+            "ok": False,
+            "error": "User not logged in",
+            "history": []
+        })
+
+    history = CHAT_HISTORY.get(user_id, [])
+    
+    return JsonResponse({
+        "ok": True,
+        "history": history
+    })
 
 # ---------------- CHAT API ----------------
 @csrf_exempt
@@ -2013,6 +2301,17 @@ def chat_api(request):
     
     token = request.session.get("fixhr_token")
     user_id = request.session.get("employee_id") or "default_user"
+
+
+    if user_id not in CHAT_HISTORY:
+        CHAT_HISTORY[user_id] = []
+
+    # Store user message
+    CHAT_HISTORY[user_id].append({
+        "role": "user",
+        "text": msg
+    })
+
     
     SESSION_MEMORY.setdefault(user_id, {"date": None, "leave_type": None, "reason": None})
     chat_memory = SESSION_MEMORY[user_id]
@@ -2145,9 +2444,21 @@ def chat_api(request):
     elif task == "my_missed_punch":
         return handle_my_missed_punch(token)
     elif task == "privacy_policy":
-        return handle_privacy_policy(token)
-    elif task == "payslip_policy":
-        return handle_payslip_policy(token)
+        # return handle_privacy_policy(token)
+        data = handle_privacy_policy(token)
+        return JsonResponse(data, safe=False)
+    elif task == "payslip":
+        # return handle_payslip_policy(token)
+        data = handle_payslip_policy(token)
+        return JsonResponse(data, safe=False)
+    elif task == "holiday_list":
+        holidays = fetch_holidays({"authorization": f"Bearer {token}"})
+        return JsonResponse({
+            "reply_type": "holiday_list",
+            "reply": "📅 Upcoming Holidays",
+            "holidays": holidays
+        })
+        
 # Fallback to general model response
     fallback_reply = model_response(msg) or handle_general_chat(msg, lang)
     payload = {"reply": fallback_reply}
