@@ -13,7 +13,7 @@ from transformers import (
 # ===================== User Config =====================
 MODEL_NAME   = "microsoft/Phi-3-mini-4k-instruct"   # Updated to Phi-3 Mini Instruct
 # DATA_PATH    = "dataset/merged_comprehensive_training_data.json"
-DATA_PATH    = "dataset/new.json"
+DATA_PATH    = "../dataset/new.json"
 OUTPUT_DIR = "new_model"
 MAX_LENGTH   = 512
 LR           = 2e-5
