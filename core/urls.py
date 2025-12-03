@@ -17,4 +17,12 @@ urlpatterns = [
     path("api/model-status/", views.model_status_api, name="model_status_api"),
     path("api/load-model/", views.load_model_api, name="load_model_api"),
     # path("api/get-intent/", views.get_intent_api, name="get_intent_api"),
+    
+    
+        # ✅ Conversation history endpoints
+    path('api/conversations/', views.get_conversations, name='get_conversations'),
+    path('api/conversations/save/', views.save_conversation, name='save_conversation'),
+    path('api/conversations/load/', views.load_conversation, name='load_conversation'),
+    path('api/conversations/delete/', views.delete_conversation, name='delete_conversation'),
+    path("api/chat/search/", views.search_conversations, name="chat_search"),
 ]
