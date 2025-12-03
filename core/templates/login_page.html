@@ -22,23 +22,8 @@
       --rad1: #152032;
       --rad2: #0f1b26;
     }
-    [data-theme="light"] {
-      --bg: #f7f8fb;
-      --bg-2: #ffffff;
-      --card: #ffffff;
-      --field-bg: #f3f4f6;
-      --text: #111827;
-      --muted: #6b7280;
-      --accent: #10a37f;
-      --accent-2: #14b8a6;
-      --error: #dc2626;
-      --border: #e5e7eb;
-      --ring: rgba(16, 163, 127, .18);
-      --rad1: #e6fffa;
-      --rad2: #eef2ff;
-    }
-    * { box-sizing: border-box; }
-    html, body { height: 100%; margin: 0; font-family: 'Inter', system-ui; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: 'Inter', system-ui; }
     body {
       color: var(--text);
       background: radial-gradient(1200px 800px at 10% -10%, var(--rad1) 0%, transparent 60%),
@@ -47,73 +32,426 @@
       display: grid;
       place-items: center;
       padding: 24px;
+      overflow: hidden;
+      position: relative;
     }
-    .wrap { width: 100%; max-width: 440px; }
-    .brand { display: flex; align-items: center; gap: 12px; justify-content: center; margin-bottom: 18px; }
-    .logo { width: 36px; height: 36px; border-radius: 12px; position: relative; overflow: hidden;
-      background: conic-gradient(from 140deg at 50% 50%, #0d7a61, #10a37f, #2dd4bf, #0d7a61);
-      filter: drop-shadow(0 8px 24px rgba(16,163,127,.35)); }
-    .logo::after { content: ""; position: absolute; inset: 2px; border-radius: 10px; background: #0e121a; }
-    .title { text-align: center; font-weight: 700; letter-spacing: -0.02em; }
-    .subtitle { text-align: center; color: var(--muted); margin-top: 6px; font-size: 14px; }
+
+    /* Animated AI Particles */
+    .particles {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    .particle {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: var(--accent-2);
+      border-radius: 50%;
+      opacity: 0;
+      animation: float 8s infinite ease-in-out;
+      box-shadow: 0 0 20px var(--accent-2), 0 0 40px var(--accent);
+    }
+    @keyframes float {
+      0%, 100% { opacity: 0; transform: translateY(100vh) translateX(0); }
+      10% { opacity: 0.6; }
+      50% { opacity: 0.8; transform: translateY(-20vh) translateX(30px); }
+      90% { opacity: 0.3; }
+    }
+
+    /* Neural Network Background */
+    .neural-bg {
+      position: absolute;
+      inset: 0;
+      opacity: 0.15;
+      pointer-events: none;
+    }
+    .neural-line {
+      position: absolute;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      animation: pulse 3s infinite ease-in-out;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.2; }
+      50% { opacity: 0.6; }
+    }
+
+    .wrap { 
+      width: 100%; 
+      max-width: 440px; 
+      position: relative; 
+      z-index: 10;
+      animation: slideUp 0.6s ease-out;
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .brand { 
+      display: flex; 
+      align-items: center; 
+      gap: 14px; 
+      justify-content: center; 
+      margin-bottom: 20px;
+    }
+    
+    .logo-container {
+      position: relative;
+      width: 48px;
+      height: 48px;
+    }
+    .logo { 
+      width: 48px; 
+      height: 48px; 
+      border-radius: 14px; 
+      position: relative;
+      background: conic-gradient(from 140deg at 50% 50%, #0d7a61, #10a37f, #2dd4bf, #10a37f, #0d7a61);
+      filter: drop-shadow(0 8px 32px rgba(16,163,127,.5));
+      animation: rotate 8s linear infinite;
+      display: grid;
+      place-items: center;
+    }
+    @keyframes rotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .logo::before {
+      content: "";
+      position: absolute;
+      inset: 2px;
+      border-radius: 12px;
+      background: #0e121a;
+    }
+    .logo-icon {
+      position: relative;
+      z-index: 2;
+      animation: pulse-icon 2s ease-in-out infinite;
+    }
+    @keyframes pulse-icon {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+    
+    /* Orbital Rings */
+    .orbit {
+      position: absolute;
+      border: 1px solid var(--accent);
+      border-radius: 50%;
+      opacity: 0.3;
+      animation: orbit 10s linear infinite;
+    }
+    .orbit:nth-child(1) { width: 60px; height: 60px; top: -6px; left: -6px; animation-duration: 8s; }
+    .orbit:nth-child(2) { width: 72px; height: 72px; top: -12px; left: -12px; animation-duration: 12s; animation-direction: reverse; }
+    @keyframes orbit {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .title { 
+      font-size: 32px;
+      font-weight: 700; 
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, var(--accent-2), var(--accent), var(--accent-2));
+      background-size: 200% 200%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: gradient-shift 4s ease infinite;
+    }
+    @keyframes gradient-shift {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    
+    .subtitle { 
+      text-align: center; 
+      color: var(--muted); 
+      margin-top: 8px; 
+      font-size: 14px;
+      animation: fadeIn 0.8s ease-out 0.3s backwards;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
     .card {
-      border-radius: 16px; padding: 24px;
-      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-      border: 1px solid var(--border); box-shadow: 0 10px 40px rgba(0,0,0,.45);
-      backdrop-filter: blur(6px);
+      border-radius: 20px; 
+      padding: 32px;
+      background: linear-gradient(180deg, rgba(17,19,26,0.95), rgba(17,19,26,0.85));
+      border: 1px solid var(--border); 
+      box-shadow: 0 20px 60px rgba(0,0,0,.6),
+                  inset 0 1px 0 rgba(255,255,255,0.05);
+      backdrop-filter: blur(20px);
+      position: relative;
+      overflow: hidden;
+      animation: fadeIn 0.8s ease-out 0.2s backwards;
     }
-    label { display:block; font-size: 13px; color: var(--muted); margin: 14px 0 8px; }
-    .field { display: flex; align-items: center; gap: 10px; background: var(--field-bg);
-      border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; transition: .2s; }
-    .field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 6px var(--ring); }
-    .field input { flex: 1; background: transparent; border: 0; outline: 0; color: var(--text); font-size: 15px; }
-    .row { display: flex; align-items: center; justify-content: space-between; font-size: 14px; color: var(--muted); }
-    .row a { color: var(--text); text-decoration: none; opacity: .9; }
-    .actions { margin-top: 18px; display: grid; gap: 10px; }
-    .btn { display: inline-flex; align-items: center; justify-content: center; border-radius: 12px;
-      padding: 12px 14px; font-weight: 600; cursor: pointer; background: var(--card); color: var(--text); border: 1px solid var(--border); }
-    .btn.primary { background: linear-gradient(180deg, var(--accent), #0d7a61); border: none; }
-    .error { display:none; margin-top: 8px; color: var(--error); font-size: 13px; }
-    .footer { position:fixed; left:0; right:0; bottom:12px; text-align:center; color:var(--muted); font-size:12px; opacity:.9 }
+    .card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent-2), transparent);
+      animation: scan 3s infinite;
+    }
+    @keyframes scan {
+      0% { left: -100%; }
+      100% { left: 100%; }
+    }
+
+    label { 
+      display: block; 
+      font-size: 13px; 
+      font-weight: 500;
+      color: var(--muted); 
+      margin: 18px 0 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    .field { 
+      display: flex; 
+      align-items: center; 
+      gap: 12px; 
+      background: var(--field-bg);
+      border: 1px solid var(--border); 
+      border-radius: 12px; 
+      padding: 14px 16px; 
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+    .field::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(16,163,127,0.1), transparent);
+      transform: translateX(-100%);
+      transition: transform 0.6s;
+    }
+    .field:hover::before {
+      transform: translateX(100%);
+    }
+    .field:focus-within { 
+      border-color: var(--accent); 
+      box-shadow: 0 0 0 4px var(--ring), 0 8px 24px rgba(16,163,127,0.2);
+      transform: translateY(-2px);
+    }
+    .field input { 
+      flex: 1; 
+      background: transparent; 
+      border: 0; 
+      outline: 0; 
+      color: var(--text); 
+      font-size: 15px;
+    }
+    .field input::placeholder {
+      color: var(--muted);
+      opacity: 0.5;
+    }
+
+    #pwToggle {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      opacity: 0.6;
+      transition: all 0.3s;
+    }
+    #pwToggle:hover {
+      opacity: 1;
+      transform: scale(1.1);
+    }
+
+    .row { 
+      display: flex; 
+      align-items: center; 
+      justify-content: space-between; 
+      font-size: 13px; 
+      color: var(--muted);
+      margin-top: 16px;
+    }
+    .row a { 
+      color: var(--accent-2); 
+      text-decoration: none; 
+      transition: all 0.3s;
+      position: relative;
+    }
+    .row a::after {
+      content: "";
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      width: 0;
+      height: 1px;
+      background: var(--accent-2);
+      transition: width 0.3s;
+    }
+    .row a:hover::after {
+      width: 100%;
+    }
+
+    .actions { 
+      margin-top: 24px; 
+      display: grid; 
+      gap: 12px; 
+    }
+    
+    .btn { 
+      display: inline-flex; 
+      align-items: center; 
+      justify-content: center; 
+      border-radius: 12px;
+      padding: 14px 16px; 
+      font-weight: 600; 
+      font-size: 15px;
+      cursor: pointer; 
+      border: none;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .btn.primary { 
+      background: linear-gradient(135deg, var(--accent), #0d7a61, var(--accent));
+      background-size: 200% 200%;
+      color: white;
+      box-shadow: 0 4px 20px rgba(16,163,127,0.4);
+      animation: gradient-shift 3s ease infinite;
+    }
+    .btn.primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(16,163,127,0.6);
+    }
+    .btn.primary:active {
+      transform: translateY(0);
+    }
+    .btn.primary::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+      transform: translateX(-100%);
+    }
+    .btn.primary:hover::before {
+      animation: shine 0.6s;
+    }
+    @keyframes shine {
+      to { transform: translateX(100%); }
+    }
+
+    .error { 
+      display: none; 
+      margin-top: 12px; 
+      color: var(--error); 
+      font-size: 13px;
+      padding: 10px;
+      background: rgba(239,68,68,0.1);
+      border-radius: 8px;
+      border-left: 3px solid var(--error);
+    }
+    
+    .footer { 
+      position: fixed; 
+      left: 0; 
+      right: 0; 
+      bottom: 16px; 
+      text-align: center; 
+      color: var(--muted); 
+      font-size: 12px; 
+      opacity: 0.7;
+      z-index: 5;
+    }
+    .footer strong {
+      color: var(--accent-2);
+      font-weight: 600;
+    }
+
+    /* AI Badge */
+    .ai-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: rgba(16,163,127,0.15);
+      border: 1px solid rgba(16,163,127,0.3);
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent-2);
+      margin-top: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .ai-badge::before {
+      content: "⚡";
+      animation: pulse-icon 2s ease-in-out infinite;
+    }
   </style>
 </head>
 
 <body>
+  <!-- Animated Particles -->
+  <div class="particles" id="particles"></div>
+  
+  <!-- Neural Network Background -->
+  <div class="neural-bg" id="neuralBg"></div>
+
   <main class="wrap">
     <div class="brand">
-      <div class="logo">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-          <path d="M12 3l7 4v10l-7 4-7-4V7l7-4z" stroke="#10a37f" stroke-width="1.5"/>
-          <circle cx="12" cy="12" r="2.5" fill="#2dd4bf"/>
-        </svg>
+      <div class="logo-container">
+        <div class="orbit"></div>
+        <div class="orbit"></div>
+        <div class="logo">
+          <svg class="logo-icon" width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M12 3l7 4v10l-7 4-7-4V7l7-4z" stroke="#10a37f" stroke-width="1.5"/>
+            <circle cx="12" cy="12" r="2.5" fill="#2dd4bf"/>
+            <path d="M12 9v6M9 12h6" stroke="#0e121a" stroke-width="1.2"/>
+          </svg>
+        </div>
       </div>
-      <h1 class="title">FixHR</h1>
+      <div>
+        <h1 class="title">FixHR</h1>
+        <div class="ai-badge">AI Powered</div>
+      </div>
     </div>
-    <p class="subtitle">Login to continue</p>
+    <p class="subtitle">Secure AI-Enhanced Authentication</p>
 
     <section class="card">
       <form id="loginForm" novalidate>
         <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
-        <label>Email</label>
+        
+        <label>Email Address</label>
         <div class="field">
+          <span style="opacity: 0.5;">📧</span>
           <input type="email" name="email" placeholder="you@company.com" required>
         </div>
 
         <label>Password</label>
         <div class="field">
+          <span style="opacity: 0.5;">🔒</span>
           <input type="password" name="password" placeholder="••••••••" minlength="6" required>
           <button type="button" id="pwToggle">👁️</button>
         </div>
 
         <div class="row">
-          <label><input type="checkbox" name="remember" style="accent-color: var(--accent)"> Remember me</label>
+          <label style="display: flex; align-items: center; gap: 6px; margin: 0; text-transform: none; letter-spacing: normal;">
+            <input type="checkbox" name="remember" style="accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer;"> 
+            <span>Remember me</span>
+          </label>
           <a href="#">Forgot password?</a>
         </div>
 
         <p class="error" id="error"></p>
 
         <div class="actions">
-          <button class="btn primary" type="submit" id="submitBtn">Login</button>
+          <button class="btn primary" type="submit" id="submitBtn">
+            <span>Login with AI</span>
+          </button>
         </div>
       </form>
     </section>
@@ -122,6 +460,29 @@
   <footer class="footer">Powered by <strong>Fixing Dots</strong> — © 2025</footer>
 
   <script>
+    // Create floating particles
+    const particlesContainer = document.getElementById('particles');
+    for (let i = 0; i < 30; i++) {
+      const particle = document.createElement('div');
+      particle.className = 'particle';
+      particle.style.left = Math.random() * 100 + '%';
+      particle.style.animationDelay = Math.random() * 8 + 's';
+      particle.style.animationDuration = (Math.random() * 4 + 6) + 's';
+      particlesContainer.appendChild(particle);
+    }
+
+    // Create neural network lines
+    const neuralBg = document.getElementById('neuralBg');
+    for (let i = 0; i < 8; i++) {
+      const line = document.createElement('div');
+      line.className = 'neural-line';
+      line.style.top = (i * 12 + 5) + '%';
+      line.style.width = (Math.random() * 60 + 40) + '%';
+      line.style.left = (Math.random() * 30) + '%';
+      line.style.animationDelay = (Math.random() * 3) + 's';
+      neuralBg.appendChild(line);
+    }
+
     const pwToggle = document.getElementById("pwToggle");
     const form = document.getElementById("loginForm");
     const errorBox = document.getElementById("error");
@@ -130,13 +491,14 @@
     pwToggle.onclick = () => {
       const pwd = form.password;
       pwd.type = pwd.type === "password" ? "text" : "password";
+      pwToggle.textContent = pwd.type === "password" ? "👁️" : "🙈";
     };
 
     form.onsubmit = async (e) => {
       e.preventDefault();
       errorBox.style.display = "none";
       btn.disabled = true;
-      btn.textContent = "Signing in...";
+      btn.innerHTML = '<span>🤖 Authenticating...</span>';
 
       const body = {
         email: form.email.value.trim(),
@@ -156,18 +518,32 @@
         const data = await resp.json();
 
         if (data.status === "success") {
-          window.location.href = data.next || "/dashboard/";
+          btn.innerHTML = '<span>✅ Success!</span>';
+          setTimeout(() => {
+            window.location.href = data.next || "/dashboard/";
+          }, 500);
         } else {
           throw new Error(data.message || "Invalid login");
         }
       } catch (err) {
-        errorBox.textContent = err.message;
+        errorBox.textContent = "⚠️ " + err.message;
         errorBox.style.display = "block";
       } finally {
-        btn.disabled = false;
-        btn.textContent = "Login";
+        if (btn.disabled) {
+          setTimeout(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<span>Login with AI</span>';
+          }, 1000);
+        }
       }
     };
+
+    // Add input animation effects
+    document.querySelectorAll('.field input').forEach(input => {
+      input.addEventListener('focus', (e) => {
+        e.target.parentElement.style.borderColor = 'var(--accent)';
+      });
+    });
   </script>
 </body>
 </html>
