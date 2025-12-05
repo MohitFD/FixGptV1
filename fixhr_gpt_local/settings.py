@@ -27,8 +27,13 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+APP_VERSION = "v1.5"
 
 # Application definition
+
+
+
+
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -66,6 +71,10 @@ TEMPLATES = [
         },
     },
 ]
+
+TEMPLATES[0]["OPTIONS"]["context_processors"].append(
+    "core.context_processors.app_version"
+)
 
 WSGI_APPLICATION = 'fixhr_gpt_local.wsgi.application'
 

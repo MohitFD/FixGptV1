@@ -9,8 +9,8 @@ from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.views.decorators.http import require_POST, require_http_methods
 from collections import defaultdict
 # Core imports for intent classification and response generation
-from core.model_inference2 import model_response
-from core.phi3_inference_v3 import intent_model_call
+# from core.model_inference2 import model_response
+# from core.phi3_inference_v3 import intent_model_call
 
 from core.extract_date_time import extract_datetime_info
 
@@ -1553,6 +1553,9 @@ def login_api(request):
             request.session["employee_id"] = user.get("emp_id")
             request.session["name"] = user.get("name", "User")
             request.session["email"] = user.get("email")
+            request.session["phone"] = user.get("phone")  # ⭐ FIXED
+            
+            request.session["avatar_url"] = user.get("profile_photo")  # ⭐ FIXED
             # store role information for UI permissions
             role = (user.get("role") or {})
             request.session["role_name"] = role.get("role_name") or "Employee"
@@ -1580,18 +1583,23 @@ def check_authentication(request):
 
 
 def chat_page(request):
-    if not check_authentication(request):
-        return redirect("login")
+    is_logged_in = check_authentication(request)
+
     return render(
         request,
         "chat_page.html",
         {
-            "message": f"Welcome {request.session.get('name','User')}! You are logged in.",
-            "employee_id": request.session.get("employee_id"),
-            "name": request.session.get("name"),
-            "role_name": request.session.get("role_name"),
+            "is_logged_in": is_logged_in,
+            "employee_id": request.session.get("employee_id") if is_logged_in else None,
+            "name": request.session.get("name") if is_logged_in else "",
+            "role_name": request.session.get("role_name") if is_logged_in else "",
+            "email": request.session.get("email") if is_logged_in else "",  # ⭐ FIXED
+            "phone": request.session.get("phone") if is_logged_in else "",  # ⭐ FIXED
+            "avatar_url": request.session.get("avatar_url") if is_logged_in else "",  # ⭐ FIXED
         },
     )
+
+
 
 
 def dashboard_page(request):
@@ -1668,7 +1676,7 @@ def leave_management_page(request):
 
 def logout_view(request):
     request.session.flush()
-    return redirect("login")
+    return redirect("chat")
 
 
 # ---------------- Model Management ----------------
@@ -2283,185 +2291,211 @@ def chat_history(request):
 # ---------------- CHAT API ----------------
 @csrf_exempt
 def chat_api(request):
-    """Main chat API endpoint using phi3_inference_v3 for intent classification and model_inference2 for general responses"""
-    if not check_authentication(request):
-        return JsonResponse({"error": "Unauthorized"}, status=401)
+    """Main chat API endpoint using phi3_inference_v3 for intent classification 
+       and model_inference2 for general responses"""
     
+    is_logged_in = check_authentication(request)
+    token = request.session.get("fixhr_token") if is_logged_in else None
+
     if request.method != "POST":
         return JsonResponse({"error": "Invalid method"}, status=405)
-    
+
     try:
         body = json.loads(request.body.decode())
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON body"}, status=400)
-    
+
     msg = (body.get("message") or "").strip()
     if not msg:
         return JsonResponse({"error": "Message text is required"}, status=400)
-    
-    token = request.session.get("fixhr_token")
+
     user_id = request.session.get("employee_id") or "default_user"
 
-
+    # Initialize history
     if user_id not in CHAT_HISTORY:
         CHAT_HISTORY[user_id] = []
 
-    # Store user message
-    CHAT_HISTORY[user_id].append({
-        "role": "user",
-        "text": msg
-    })
+    CHAT_HISTORY[user_id].append({"role": "user", "text": msg})
 
-    
+    # Memory setup
     SESSION_MEMORY.setdefault(user_id, {"date": None, "leave_type": None, "reason": None})
     chat_memory = SESSION_MEMORY[user_id]
-    
+
     print("💬 User Message:", msg)
+
+    # -------------------------------
+    # 🧠 INTENT CLASSIFICATION
+    # -------------------------------
+    # classification = classify_message(msg)
+    # intent = classification.get("intent") or "general"
+
+    # -------------------------------
+    # 🔥 Guest User Restriction Logic
+    # -------------------------------
+    # if not is_logged_in:
+    #     if intent != "general":  
+    #         return JsonResponse({
+    #             "reply": "⚠️ Please login to access HR features like leave, attendance, payslip, gatepass & approvals.",
+    #             "reply_type": "text_only"
+    #         })
+
+    # Yahan se aapka original logic continue hoga...
+
+    
     
     # 1) Classify intent using phi3_inference_v3
-    classification = classify_message(msg)
-    print(f"classification =============== : {classification}")
-    intent = classification.get("intent") or "general"
-    lang = classification.get("language", "en")
-    confidence = classification.get("confidence", 0.0)
+#     classification = classify_message(msg)
+#     print(f"classification =============== : {classification}")
+#     intent = classification.get("intent") or "general"
+#     lang = classification.get("language", "en")
+#     confidence = classification.get("confidence", 0.0)
     
-    print("🤖 Phi-3 Intent →", classification)
+#     print("🤖 Phi-3 Intent →", classification)
     
-    # 2) If general intent, use model_inference2.py for response
-    if intent == "general":
-        reply = model_response(msg) or handle_general_chat(msg, lang)
-        return JsonResponse({
-            "reply": reply,
-            "intent": intent,
-            "confidence": confidence,
-            "datetime_info": None,
-        })
+#     # 2) If general intent, use model_inference2.py for response
+#     if intent == "general":
+#         reply = model_response(msg) or handle_general_chat(msg, lang)
+#         return JsonResponse({
+#             "reply": reply,
+#             "intent": intent,
+#             "confidence": confidence,
+#             "datetime_info": None,
+#         })
     
-    # 3) Extract datetime info using extract_date_time.py
-    datetime_info = extract_datetime_info(msg)
-    decision = build_decision_context(msg, classification, datetime_info)
-    task = decision.get("task") or "general"
-    lang = decision.get("language", lang)
+#     # 3) Extract datetime info using extract_date_time.py
+#     datetime_info = extract_datetime_info(msg)
+#     decision = build_decision_context(msg, classification, datetime_info)
+#     task = decision.get("task") or "general"
+#     lang = decision.get("language", lang)
     
-    print("📅 DateTime Extract →", datetime_info)
+#     print("📅 DateTime Extract →", datetime_info)
     
-    # 4) Continuation mode: reuse previous slots if user says "also", "again", etc.
-    if any(w in msg.lower() for w in ["bhi", "also", "same", "phir", "again", "next day", "uske baad"]):
-        if chat_memory.get("date"):
-            decision["date"] = chat_memory["date"]
-        if chat_memory.get("leave_type"):
-            decision["leave_type"] = chat_memory["leave_type"]
-        if chat_memory.get("reason"):
-            decision["reason"] = chat_memory["reason"]
+#     # 4) Continuation mode: reuse previous slots if user says "also", "again", etc.
+#     if any(w in msg.lower() for w in ["bhi", "also", "same", "phir", "again", "next day", "uske baad"]):
+#         if chat_memory.get("date"):
+#             decision["date"] = chat_memory["date"]
+#         if chat_memory.get("leave_type"):
+#             decision["leave_type"] = chat_memory["leave_type"]
+#         if chat_memory.get("reason"):
+#             decision["reason"] = chat_memory["reason"]
     
-    meta = {
-        "intent": task,
-        "confidence": confidence,
-        "datetime_info": datetime_info,
-    }
+#     meta = {
+#         "intent": task,
+#         "confidence": confidence,
+#         "datetime_info": datetime_info,
+#     }
     
-    # 5) Handle approval commands (high priority) - use handle_leave_approval
-    raw_msg = msg.lower().strip()
-    if raw_msg.startswith("approve leave") or raw_msg.startswith("reject leave"):
-        result = handle_leave_approval(msg, token)
-        if isinstance(result, JsonResponse):
-            return result
-        return JsonResponse({"reply": result})
+#     # 5) Handle approval commands (high priority) - use handle_leave_approval
+#     raw_msg = msg.lower().strip()
+#     if raw_msg.startswith("approve leave") or raw_msg.startswith("reject leave"):
+#         result = handle_leave_approval(msg, token)
+#         if isinstance(result, JsonResponse):
+#             return result
+#         return JsonResponse({"reply": result})
     
-    if raw_msg.startswith("approve gatepass") or raw_msg.startswith("reject gatepass"):
-        result = handle_gatepass_approval(msg, token)
-        return JsonResponse({"reply": result})
+#     if raw_msg.startswith("approve gatepass") or raw_msg.startswith("reject gatepass"):
+#         result = handle_gatepass_approval(msg, token)
+#         return JsonResponse({"reply": result})
     
-    if raw_msg.startswith("approve missed") or raw_msg.startswith("reject missed"):
-        result = handle_missed_approval(msg, token)
-        return JsonResponse({"reply": result})
+#     if raw_msg.startswith("approve missed") or raw_msg.startswith("reject missed"):
+#         result = handle_missed_approval(msg, token)
+#         return JsonResponse({"reply": result})
     
-    # 6) Handle specific tasks using existing handlers
-    if task == "apply_leave":
-        print("entering apply leave")
-        result = handle_apply_leave(msg, token, datetime_info=datetime_info)
-        if isinstance(result, JsonResponse):
-            return result
+#     # 6) Handle specific tasks using existing handlers
+#     if task == "apply_leave":
+#         print("entering apply leave")
+#         result = handle_apply_leave(msg, token, datetime_info=datetime_info)
+#         if isinstance(result, JsonResponse):
+#             return result
         
-        # Save to memory
-        SESSION_MEMORY[user_id] = {
-            "date": datetime_info.get("start_date", ""),
-            "leave_type": decision.get("leave_type", "full"),
-            "reason": decision.get("reason", "")
-        }
+#         # Save to memory
+#         SESSION_MEMORY[user_id] = {
+#             "date": datetime_info.get("start_date", ""),
+#             "leave_type": decision.get("leave_type", "full"),
+#             "reason": decision.get("reason", "")
+#         }
         
-        payload = {"reply": result}
-        payload.update(meta)
-        return JsonResponse(payload)
+#         payload = {"reply": result}
+#         payload.update(meta)
+#         return JsonResponse(payload)
     
-    elif task == "leave_list" or task == "pending_leave":
-        return handle_pending_leaves(token, request.session.get("role_name"))
+#     elif task == "leave_list" or task == "pending_leave":
+#         return handle_pending_leaves(token, request.session.get("role_name"))
     
-    elif task == "apply_gatepass":
-        print("entering apply gatepass")
-        result = handle_apply_gatepass(msg, token, datetime_info=datetime_info)
-        if isinstance(result, JsonResponse):
-            return result
+#     elif task == "apply_gatepass":
+#         print("entering apply gatepass")
+#         result = handle_apply_gatepass(msg, token, datetime_info=datetime_info)
+#         if isinstance(result, JsonResponse):
+#             return result
         
-        payload = {"reply": result}
-        payload.update(meta)
-        return JsonResponse(payload)
+#         payload = {"reply": result}
+#         payload.update(meta)
+#         return JsonResponse(payload)
     
-    elif task == "pending_gatepass":
-        return handle_pending_gatepass(token, request.session.get("role_name"))
+#     elif task == "pending_gatepass":
+#         return handle_pending_gatepass(token, request.session.get("role_name"))
     
-    elif task == "apply_missed_punch" or task == "apply_miss_punch":
-        print("entering apply missed punch")
-        result = handle_apply_missed_punch(msg, token, datetime_info=datetime_info)
-        if isinstance(result, JsonResponse):
-            return result
+#     elif task == "apply_missed_punch" or task == "apply_miss_punch":
+#         print("entering apply missed punch")
+#         result = handle_apply_missed_punch(msg, token, datetime_info=datetime_info)
+#         if isinstance(result, JsonResponse):
+#             return result
         
-        payload = {"reply": result}
-        payload.update(meta)
-        return JsonResponse(payload)
+#         payload = {"reply": result}
+#         payload.update(meta)
+#         return JsonResponse(payload)
     
-    elif task == "pending_missed_punch" or task == "pending_miss_punch":
-        return handle_pending_missed_punch(token, request.session.get("role_name"))
+#     elif task == "pending_missed_punch" or task == "pending_miss_punch":
+#         return handle_pending_missed_punch(token, request.session.get("role_name"))
     
-    elif task == "my_missed_punch" or task == "my_miss_punch":
-        return handle_my_missed_punch(token)
+#     elif task == "my_missed_punch" or task == "my_miss_punch":
+#         return handle_my_missed_punch(token)
     
-    elif task == "leave_balance":
-        response = handle_leave_balance(token)
-        if isinstance(response, JsonResponse):
-            return response
-        payload = {"reply": response}
-        payload.update(meta)
-        return JsonResponse(payload)
+#     elif task == "leave_balance":
+#         response = handle_leave_balance(token)
+#         if isinstance(response, JsonResponse):
+#             return response
+#         payload = {"reply": response}
+#         payload.update(meta)
+#         return JsonResponse(payload)
     
-    elif task == "attendance_report":
-        return handle_attendance_report(decision, token, request, msg)
-    elif task == "leave_balance":
-        result = handle_leave_balance(token)
-        return result   
-    elif task == "my_leaves":
-        return handle_my_leaves(token, request.session.get("employee_id"))
-    elif task == "my_missed_punch":
-        return handle_my_missed_punch(token)
-    elif task == "privacy_policy":
-        # return handle_privacy_policy(token)
-        data = handle_privacy_policy(token)
-        return JsonResponse(data, safe=False)
-    elif task == "payslip":
-        # return handle_payslip_policy(token)
-        data = handle_payslip_policy(token)
-        return JsonResponse(data, safe=False)
-    elif task == "holiday_list":
-        holidays = fetch_holidays({"authorization": f"Bearer {token}"})
-        return JsonResponse({
-            "reply_type": "holiday_list",
-            "reply": "📅 Upcoming Holidays",
-            "holidays": holidays
-        })
+#     elif task == "attendance_report":
+#         return handle_attendance_report(decision, token, request, msg)
+#     elif task == "leave_balance":
+#         result = handle_leave_balance(token)
+#         return result   
+#     elif task == "my_leaves":
+#         return handle_my_leaves(token, request.session.get("employee_id"))
+#     elif task == "my_missed_punch":
+#         return handle_my_missed_punch(token)
+#     elif task == "privacy_policy":
+#         # return handle_privacy_policy(token)
+#         data = handle_privacy_policy(token)
+#         return JsonResponse(data, safe=False)
+#     elif task == "payslip":
+#         # return handle_payslip_policy(token)
+#         data = handle_payslip_policy(token)
+#         return JsonResponse(data, safe=False)
+#     elif task == "holiday_list":
+#         holidays = fetch_holidays({"authorization": f"Bearer {token}"})
+#         return JsonResponse({
+#             "reply_type": "holiday_list",
+#             "reply": "📅 Upcoming Holidays",
+#             "holidays": holidays
+#         })
         
-# Fallback to general model response
-    fallback_reply = model_response(msg) or handle_general_chat(msg, lang)
-    payload = {"reply": fallback_reply}
-    payload.update(meta)
+# # Fallback to general model response
+#     fallback_reply = model_response(msg) or handle_general_chat(msg, lang)
+#     payload = {"reply": fallback_reply}
+#     payload.update(meta)
     
-    return JsonResponse(payload)
+#     return JsonResponse(payload)
+
+
+    return JsonResponse({
+        "reply": "general",
+        "intent": "general",
+        "confidence": 2.33,
+        "datetime_info": None,
+    })
+

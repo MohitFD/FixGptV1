@@ -91,31 +91,39 @@
 
 
    .text-label,
-   .text-content .title {
-      font-weight: 500;
-      font-size: 13.5px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-   }
+   /* ⭐ FIX: Prevent long messages from overflowing */
+.text-content {
+   flex: 1;
+   min-width: 0;
+   overflow: hidden;
+}
 
-   .text-content .time {
-      font-size: 11px;
-      color: var(--muted);
-      margin-top: 2px;
-   }
+.text-content .title {
+   max-width: 100%;
+   overflow: hidden;
+   text-overflow: ellipsis;
+   white-space: nowrap;
+   display: block;
+}
 
-   .delete-btn {
-      background: none;
-      border: none;
-      color: var(--muted);
-      font-size: 18px;
-      cursor: pointer;
-      opacity: 0;
-      transition: opacity 0.2s;
-      padding: 4px 8px;
-      border-radius: 6px;
-   }
+.text-content .time {
+   font-size: 11px;
+   color: var(--muted);
+   margin-top: 2px;
+}
+
+.delete-btn {
+   background: none;
+   border: none;
+   color: var(--muted);
+   font-size: 18px;
+   cursor: pointer;
+   opacity: 0;
+   transition: opacity 0.2s;
+   padding: 4px 8px;
+   border-radius: 6px;
+   flex-shrink: 0;  /* ⭐ Add this line */
+}
    .delete-btn:hover {
       background: var(--reject);
       color: white;
@@ -354,52 +362,115 @@
       display: flex;
       flex-direction: column;
    }
-   .msg {
-      max-width: 75%;
-      margin-bottom: 12px;
-      padding: 12px 16px;
-      border-radius: 12px;
-      line-height: 1.5;
-      word-wrap: break-word;
-   }
-   .msg.user {
-      background: var(--accent);
-      color: #fff;
-      margin-left: auto;
-      border-bottom-right-radius: 4px;
-   }
-   .msg.bot {
-      background: var(--card);
-      color: var(--text);
-      margin-right: auto;
-      border: 1px solid var(--accent);
-      border-bottom-left-radius: 4px;
-   }
+   .chat-messages {
+    gap: 16px;                     /* messages के बीच अच्छा space */
+    padding: 20px;
+}
 
-   .chat-input {
-      display: flex;
-      padding: 16px;
-      border-top: 1px solid var(--border);
-      gap: 8px;
-   }
-   textarea {
-      flex: 1;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      color: var(--text);
-      padding: 12px;
-      resize: none;
-      font-family: inherit;
-   }
-   textarea:focus {
-      outline: none;
-      border-color: var(--accent);
-   }
+.msg.bot {
+    background: var(--card);
+    border: 1px solid var(--accent);
+    border-radius: 16px;
+    border-bottom-left-radius: 4px;
+    padding: 14px 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
 
-   #sendBtn:hover {
-      opacity: 0.9;
-   }
+.msg.user {
+    background: var(--accent);
+    color: white;
+    border-radius: 16px;
+    border-bottom-right-radius: 4px;
+    padding: 14px 18px;
+}
+
+   /* ====================== INPUT BAR – FINAL FIX ====================== */
+.chat-input {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+    transition: all 0.35s ease;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Welcome screen ke liye centered */
+.chat-input.centered-input {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 680px;
+    max-width: 95vw;
+    z-index: 10;
+    padding: 20px;
+    background: rgba(26, 28, 37, 0.95);
+    backdrop-filter: blur(12px);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+
+/* Normal chat ke liye full width */
+.chat-input.chat-input-normal {
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
+    transform: none !important;
+    width: 100% !important;
+    max-width: none !important;
+    padding: 16px 20px !important;
+}
+
+/* Textarea aur buttons ko perfect rakho */
+.chat-input textarea {
+    flex: 1;
+    min-width: 0;                    /* Ye sabse zaroori hai */
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    color: var(--text);
+    font-size: 15px;
+    resize: none;
+    transition: all 0.2s;
+}
+
+.chat-input textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(16, 163, 127, 0.2);
+}
+
+/* Send button ko shrink hone se bachaao */
+#sendBtn,
+.mic-btn {
+    flex-shrink: 0;
+    width: 46px;
+    height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    border-radius: 12px;
+    transition: all 0.2s;
+}
+
+#sendBtn:hover {
+    background: rgba(16, 163, 127, 0.15);
+    transform: scale(1.08);
+}
+
+.mic-btn:hover .mic-icon {
+    fill: var(--accent);
+    transform: scale(1.15);
+}
 
    /* Cards & Buttons */
    .gatepass-card {
@@ -521,7 +592,7 @@
     background: none;
     border: none;
     padding: 0;
-    margin-left: 8px;
+    margin-left: 2px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -599,8 +670,141 @@
     align-items: center;
     overflow: visible !important;
 }
+/* ====================== TYPING INDICATOR ====================== */
+.typing-indicator {
+   max-width: 15%;
+   margin-bottom: 12px;
+   padding: 16px 20px;
+   border-radius: 12px;
+   background: var(--card);
+   border: 1px solid var(--accent);
+   border-bottom-left-radius: 4px;
+   display: flex;
+   align-items: center;
+   gap: 6px;
+}
 
+.typing-indicator span {
+   width: 8px;
+   height: 8px;
+   border-radius: 50%;
+   background: var(--accent);
+   animation: typing-bounce 1.4s infinite ease-in-out;
+}
 
+.typing-indicator span:nth-child(1) {
+   animation-delay: 0s;
+}
+
+.typing-indicator span:nth-child(2) {
+   animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+   animation-delay: 0.4s;
+}
+
+@keyframes typing-bounce {
+   0%, 60%, 100% {
+      transform: translateY(0);
+      opacity: 0.7;
+   }
+   30% {
+      transform: translateY(-10px);
+      opacity: 1;
+   }
+}
+
+/* ====================== MICROPHONE BUTTON ====================== */
+.mic-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    margin-left: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.mic-icon {
+    width: 28px;
+    height: 28px;
+    fill: var(--muted);
+    transition: 0.2s ease;
+}
+
+.mic-btn:hover .mic-icon {
+    fill: var(--accent);
+    transform: scale(1.1);
+}
+
+.mic-btn.listening .mic-icon {
+    fill: var(--reject);
+    animation: pulse-mic 1s infinite;
+}
+
+@keyframes pulse-mic {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.15);
+    }
+}
+/* ==================== CHATGPT Jaisa Perfect Bubble Fix ==================== */
+.chat-messages {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px 20px 10px 20px;
+    align-items: flex-start;
+    max-width: 100%;
+}
+
+.msg {
+    max-width: 680px !important;        /* ChatGPT की exact width */
+    width: fit-content;
+    padding: 14px 20px;
+    border-radius: 18px;
+    font-size: 15.5px;
+    line-height: 1.5;
+    word-wrap: break-word;
+    white-space: pre-wrap;             /* लंबा text next line में जाएगा */
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.msg.user {
+    align-self: flex-end;
+    background: var(--accent);
+    color: white;
+    border-bottom-right-radius: 4px;
+    margin-left: auto;
+}
+
+.msg.bot {
+    align-self: flex-start;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-bottom-left-radius: 4px;
+}
+
+/* Cards भी अब ChatGPT जैसी width में रहेंगी */
+.gatepass-card,
+.gatepass-card table {
+    max-width: 100% !important;
+    overflow-x: auto;
+    border-radius: 12px;
+}
+
+/* Extra polish */
+.msg + .msg {
+    margin-top: 4px;
+}
 
 </style>
 </head>
@@ -609,22 +813,57 @@
 <!-- SIDEBAR -->
 <aside class="sidebar">
 
+  <!-- 1️⃣ BRAND SECTION (Login Button or User Name) -->
   <div class="brand">
-    <div class="user-name">{{ name }}</div>
+    {% if is_logged_in %}
+      <div class="user-name">{{ name }}</div>
+    {% else %}
+      <button onclick="window.location.href='/login/'"
+    style="
+        width:100%;
+        padding:14px 18px;
+        background: linear-gradient(135deg, var(--accent), #0c8b68);
+        border:none;
+        border-radius:14px;
+        font-size:15px;
+        font-weight:600;
+        cursor:pointer;
+        color:#fff;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        gap:10px;
+        box-shadow:0 4px 12px rgba(16,163,127,0.35);
+        transition:0.25s ease;
+        margin-top:4px;
+    "
+    onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 20px rgba(16,163,127,0.55)'"
+    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(16,163,127,0.35)'"
+>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+        <polyline points="10 17 15 12 10 7"/>
+        <line x1="15" y1="12" x2="3" y2="12"/>
+    </svg>
+    Login
+</button>
+
+    {% endif %}
   </div>
 
-  <!-- NEW CHAT BUTTON -->
-<!-- NEW CHAT BUTTON (already good) -->
-<div class="sidebar-btn" id="newChatBtn" title="New Chat">
-  <svg class="icon-svg" viewBox="0 0 24 24"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-  <span class="text-label">New Chat</span>
-</div>
+  <!-- 2️⃣ NEW CHAT BUTTON (Always visible) -->
+  <div class="sidebar-btn" id="newChatBtn" title="New Chat">
+    <svg class="icon-svg" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+    </svg>
+    <span class="text-label">New Chat</span>
+  </div>
 
-<div class="sidebar-search-box">
-  <div class="search-wrapper" title="Search chats">
-
-      
-      <!-- SAME ICON STYLE AS NEW CHAT -->
+  <!-- 3️⃣ SEARCH BOX (Only if logged in) -->
+  {% if is_logged_in %}
+  <div class="sidebar-search-box">
+    <div class="search-wrapper" title="Search chats">
       <svg class="icon-svg" viewBox="0 0 24 24">
         <path fill="currentColor"
         d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 
@@ -632,48 +871,48 @@
            4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 
            9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
       </svg>
-
       <input id="historySearch"
          type="text"
          placeholder="Search chats"
          oninput="searchHistory()"
       />
+    </div>
   </div>
-</div>
+  {% endif %}
 
-
-<div id="chatCounterBox" 
-     style="display:none; align-items:center; justify-content:center; padding:16px; gap:10px;">
-
+  <!-- 4️⃣ CHAT COUNTER BOX (Mini mode) -->
+  <div id="chatCounterBox" 
+       style="display:none; align-items:center; justify-content:center; padding:16px; gap:10px;">
     <svg class="icon-svg" viewBox="0 0 24 24">
-        <path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
+      <path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
     </svg>
-
     <span id="chatCount" style="font-size:14px; font-weight:600;"></span>
-</div>
-
-
-<!-- History List -->
-<div id="historyList">
-    <!-- History items dynamically added -->
-</div>
-
-
-  <!-- ⭐ PROFILE SECTION IN SIDEBAR BOTTOM -->
-  <div class="sidebar-profile-section" style="display:flex; justify-content:flex-start; align-items:center; padding: 0 16px; margin-top: auto; position: relative;">
-      <button class="profile-toggle-btn" id="profileToggleBtn">
-          <img src="{{ avatar_url }}" alt="Profile" onerror="this.src='https://dev.fixhr.app/uploads/employee_profile/FHAA0049/emp_profile_68b96feb9341d129518309.jpg'">
-      </button>
-      
-      <div class="sidebar-profile-dropdown" id="sidebarProfileDropdown">
-          <div id="openProfileBtn">👤 Profile</div>
-          <div id="themeToggleBtn">🌙 Dark Mode</div>
-
-          <div id="logoutBtn2">🚪 Logout</div>
-      </div>
   </div>
 
-  
+  <!-- 5️⃣ CHAT HISTORY LIST (Only if logged in) -->
+  {% if is_logged_in %}
+  <div id="historyList"></div>
+  {% endif %}
+
+  <!-- 6️⃣ PROFILE SECTION (Only if logged in) -->
+  {% if is_logged_in %}
+  <div class="sidebar-profile-section" 
+       style="display:flex; justify-content:flex-start; align-items:center; padding: 0 16px; margin-top: auto; position: relative;">
+      
+    <button class="profile-toggle-btn" id="profileToggleBtn">
+      <img src="{{ avatar_url }}" alt="Profile"
+           onerror="this.src='https://dev.fixhr.app/uploads/employee_profile/FHAA0049/emp_profile_68b96feb9341d129518309.jpg'">
+    </button>
+    
+    <div class="sidebar-profile-dropdown" id="sidebarProfileDropdown">
+      <div id="openProfileBtn">👤 Profile</div>
+      <div id="themeToggleBtn">🌙 Dark Mode</div>
+      <div id="logoutBtn2">🚪 Logout</div>
+    </div>
+
+  </div>
+  {% endif %}
+
 </aside>
 
 <!-- CHAT SECTION -->
@@ -684,22 +923,30 @@
       <div class="header-left">
           <span>FixGPT.ai</span>
       </div>
-      <div class="version-chip">v1.0</div>
+      <div class="version-chip">{{ APP_VERSION }}</div>
+
   </div>
 
   <div class="chat-messages" id="chatMessages"></div>
 
   <div class="chat-input">
-      <textarea id="msgInput" rows="1" placeholder="Type your message..."></textarea>
-      <button id="sendBtn" class="send-icon-only">
-    <svg class="send-plane-icon" viewBox="0 0 24 24">
-        <path d="M2 3l20 9-20 9 3-9z"></path>
-    </svg>
-</button>
-
-
-
-  </div>
+    <textarea id="msgInput" rows="1" placeholder="Type your message..."></textarea>
+    
+    <!-- Microphone Button -->
+    <button id="micBtn" class="mic-btn" title="Voice Input">
+        <svg class="mic-icon" viewBox="0 0 24 24">
+            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+            <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+        </svg>
+    </button>
+    
+    <!-- Send Button -->
+    <button id="sendBtn" class="send-icon-only">
+        <svg class="send-plane-icon" viewBox="0 0 24 24">
+            <path d="M2 3l20 9-20 9 3-9z"></path>
+        </svg>
+    </button>
+</div>
 </section>
 
 <!-- PROFILE PANEL -->
@@ -710,7 +957,8 @@
   </div>
 
   <div style="text-align:center;margin-top:20px;">
-      <img id="p_avatar" style="width:120px;height:120px;border-radius:50%;border:3px solid var(--accent);object-fit:cover;" src="https://dev.fixhr.app/uploads/employee_profile/FHAA0049/emp_profile_68b96feb9341d129518309.jpg">
+      <img id="p_avatar" style="width:120px;height:120px;border-radius:50%;border:3px solid var(--accent);object-fit:cover;"  src="{{ avatar_url }}"
+     onerror="this.src='https://dev.fixhr.app/uploads/employee_profile/FHAA0049/emp_profile_68b96feb9341d129518309.jpg'">
       <h2 id="p_name" style="margin:10px 0 4px;">{{ name }}</h2>
       <p id="p_role" style="color:var(--muted);margin:0 0 20px;">{{ role_name }}</p>
   </div>
@@ -727,19 +975,26 @@
 const profileToggleBtn = document.getElementById("profileToggleBtn");
 const sidebarProfileDropdown = document.getElementById("sidebarProfileDropdown");
 
-profileToggleBtn.onclick = () => {
-    sidebarProfileDropdown.classList.toggle("show");
-};
+if (profileToggleBtn) {
+    profileToggleBtn.onclick = () => {
+        sidebarProfileDropdown.classList.toggle("show");
+    };
+}
+
 
 // ============================================
 // PROFILE DROPDOWN ACTIONS
 // ============================================
 
 // Open Profile Panel
-document.getElementById("openProfileBtn").onclick = () => {
-    sidebarProfileDropdown.classList.remove("show");
-    openProfilePanel();
-};
+const openProfileBtn = document.getElementById("openProfileBtn");
+if (openProfileBtn) {
+    openProfileBtn.onclick = () => {
+        sidebarProfileDropdown.classList.remove("show");
+        openProfilePanel();
+    };
+}
+
 
 function openProfilePanel() {
     document.getElementById("profilePanel").style.right = "0px";
@@ -755,29 +1010,45 @@ function closeProfile() {
 const themeToggleBtn = document.getElementById("themeToggleBtn");
 
 function updateThemeButtonText() {
-    if (document.documentElement.classList.contains("light")) {
-        themeToggleBtn.textContent = "🌙 Dark Mode";
-    } else {
-        themeToggleBtn.textContent = "☀️ Light Mode";
+    if (themeToggleBtn) {
+        if (document.documentElement.classList.contains("light")) {
+            themeToggleBtn.textContent = "🌙 Dark Mode";
+        } else {
+            themeToggleBtn.textContent = "☀️ Light Mode";
+        }
     }
 }
 
-themeToggleBtn.onclick = () => {
-    const root = document.documentElement;
+// Load saved theme on startup
+if (localStorage.getItem("theme") === "light") {
+    document.documentElement.classList.add("light");
+}
+updateThemeButtonText();
 
-    // Toggle theme class
-    root.classList.toggle("light");
+// ⭐ WRAP FULL TOGGLE ACTION INSIDE CONDITION
+if (themeToggleBtn) {
+    themeToggleBtn.onclick = () => {
+        const root = document.documentElement;
 
-    // Save theme
-    const isLight = root.classList.contains("light");
-    localStorage.setItem("theme", isLight ? "light" : "dark");
+        // Toggle theme
+        root.classList.toggle("light");
 
-    // Update button text
-    updateThemeButtonText();
+        // Save mode
+        localStorage.setItem(
+            "theme",
+            root.classList.contains("light") ? "light" : "dark"
+        );
 
-    // Close dropdown
-    sidebarProfileDropdown.classList.remove("show");
-};
+        // Update text
+        updateThemeButtonText();
+
+        // Close dropdown (ONLY if logged in)
+        if (sidebarProfileDropdown) {
+            sidebarProfileDropdown.classList.remove("show");
+        }
+    };
+}
+
 
 // Load saved theme on startup
 if (localStorage.getItem("theme") === "light") {
@@ -787,16 +1058,131 @@ updateThemeButtonText();
 
 
 // Logout
-document.getElementById("logoutBtn2").onclick = async () => {
-    await fetch("/logout/",{method:"POST",headers:{"X-CSRFToken":"{{ csrf_token }}"}});
-    window.location.href="/login/";
-};
+const logoutBtn2 = document.getElementById("logoutBtn2");
+if (logoutBtn2) {
+    logoutBtn2.onclick = async () => {
+        await fetch("/logout/", {
+            method: "POST",
+            headers: {"X-CSRFToken": "{{ csrf_token }}"}
+        });
+        window.location.href = "/chat/";
+    };
+}
+
+
 
 // ============================================
 // LOAD SAVED THEME
 // ============================================
 if (localStorage.getItem("theme") === "light") {
     document.documentElement.classList.add("light");
+}
+
+
+// ⭐ ADD THESE TWO FUNCTIONS
+function showTypingIndicator() {
+    const box = document.getElementById("chatMessages");
+    const indicator = document.createElement("div");
+    indicator.className = "typing-indicator";
+    indicator.id = "typingIndicator";
+    indicator.innerHTML = `
+        <span></span>
+        <span></span>
+        <span></span>
+    `;
+    box.appendChild(indicator);
+    box.scrollTop = box.scrollHeight;
+}
+
+function hideTypingIndicator() {
+    const indicator = document.getElementById("typingIndicator");
+    if (indicator) {
+        indicator.remove();
+    }
+}
+// ============================================
+// VOICE INPUT FUNCTIONALITY
+// ============================================
+let recognition = null;
+let isListening = false;
+
+// Check if browser supports speech recognition
+if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US'; // Change to 'hi-IN' for Hindi
+    
+    recognition.onstart = () => {
+        isListening = true;
+        const micBtn = document.getElementById("micBtn");
+        micBtn.classList.add("listening");
+        micBtn.title = "Listening... Click to stop";
+    };
+    
+    recognition.onresult = (event) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+        
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+                finalTranscript += transcript + ' ';
+            } else {
+                interimTranscript += transcript;
+            }
+        }
+        
+        const msgInput = document.getElementById("msgInput");
+        if (finalTranscript) {
+            msgInput.value = finalTranscript.trim();
+        } else {
+            msgInput.value = interimTranscript;
+        }
+    };
+    
+    recognition.onend = () => {
+        isListening = false;
+        const micBtn = document.getElementById("micBtn");
+        micBtn.classList.remove("listening");
+        micBtn.title = "Voice Input";
+        
+        // Auto-send after 2 seconds if there's text
+        const msgInput = document.getElementById("msgInput");
+        if (msgInput.value.trim()) {
+            setTimeout(() => {
+                sendMsg();
+            }, 2000);
+        }
+    };
+    
+    recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        isListening = false;
+        const micBtn = document.getElementById("micBtn");
+        micBtn.classList.remove("listening");
+        
+        if (event.error === 'not-allowed') {
+            alert('Microphone access denied. Please allow microphone access in your browser settings.');
+        }
+    };
+}
+
+function toggleVoiceInput() {
+    if (!recognition) {
+        alert('Voice input is not supported in your browser. Please use Chrome, Edge, or Safari.');
+        return;
+    }
+    
+    if (isListening) {
+        recognition.stop();
+    } else {
+        const msgInput = document.getElementById("msgInput");
+        msgInput.value = ''; // Clear existing text
+        recognition.start();
+    }
 }
 
 // ============================================
@@ -815,18 +1201,22 @@ async function sendMsg(msgText = null) {
     if (!msg) return;
     
     if (!msgText) {
-        appendMessage("user", msg);
-        currentMessages.push({ role: "user", text: msg });
-    }
+      appendMessage("user", msg);
+      currentMessages.push({ role: "user", text: msg });
+  }
 
-    const resp = await fetch("/api/chat/", {
+  showTypingIndicator();  // ⭐ Typing indicator
+
+  const resp = await fetch("/api/chat/", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRFToken": "{{ csrf_token }}" },
       body: JSON.stringify({ message: msg })
-    });
+  });
 
+   
     const data = await resp.json();
     console.log("📦 Response:", data);
+
 
     let botReply = "";
     if (data.reply_type === "leave_cards") {
@@ -869,7 +1259,7 @@ async function sendMsg(msgText = null) {
       text: botReply,
       data: data
     });
-
+    hideTypingIndicator();  // ⭐ ADD THIS LINE
     if (!msgText) msgInput.value = "";
     await saveCurrentConversation();
 
@@ -1046,7 +1436,10 @@ function searchHistory() {
     const listBox = document.getElementById("historyList");
 
     if (q.length === 0) {
+        {% if is_logged_in %}
         loadConversations();
+        {% endif %}
+
         return;
     }
 
@@ -1495,6 +1888,7 @@ document.getElementById("sidebarToggle").onclick = () => {
     }
 };
 
+
 async function loadConversation(convId) {
     try {
         const resp = await fetch("/api/conversations/load/", {
@@ -1553,7 +1947,10 @@ async function saveCurrentConversation() {
         if (data.ok) {
             currentConversationId = data.conversation_id;
             console.log("✅ Conversation saved:", currentConversationId);
+            {% if is_logged_in %}
             loadConversations();
+            {% endif %}
+
         }
     } catch (error) {
         console.error("❌ Failed to save conversation:", error);
@@ -1573,7 +1970,10 @@ async function deleteConversation(convId) {
             currentMessages = [];
             document.getElementById("chatMessages").innerHTML = "";
         }
+        {% if is_logged_in %}
         loadConversations();
+        {% endif %}
+
     } catch (error) {
         console.error("❌ Failed to delete conversation:", error);
     }
@@ -1583,12 +1983,13 @@ function startNewChat() {
     currentConversationId = null;
     currentMessages = [];
     document.getElementById("chatMessages").innerHTML = "";
+    {% if is_logged_in %}
     loadConversations();
+    {% endif %}
+
 }
 // Sidebar Open/Close Toggle
-document.getElementById("sidebarToggle").onclick = () => {
-    document.querySelector(".sidebar").classList.toggle("mini");
-};
+
 
 
 function formatTime(timestamp) {
@@ -1624,7 +2025,13 @@ function formatTime(timestamp) {
           }
       });
 
-      document.getElementById("newChatBtn").onclick = () => {
+      // Microphone button
+    const micBtn = document.getElementById("micBtn");
+    if (micBtn) {
+        micBtn.addEventListener("click", toggleVoiceInput);
+    }
+
+    document.getElementById("newChatBtn").onclick = () => {
     startNewChat();
     const chatBox = document.getElementById("chatMessages");
 
@@ -1664,6 +2071,9 @@ function formatTime(timestamp) {
     `;
 
     chatBox.appendChild(welcome);
+    const inputBox = document.querySelector(".chat-input");
+    inputBox.classList.remove("chat-input-normal");
+    inputBox.classList.add("centered-input");
 
     document.querySelector(".chat-input").classList.remove("chat-input-normal");
     // ⭐ Move the input to center
@@ -1683,7 +2093,10 @@ function formatTime(timestamp) {
 };
 
 
-    loadConversations();
+    {% if is_logged_in %}
+  loadConversations();
+  {% endif %}
+
 });
 </script>
 
@@ -2409,6 +2822,7 @@ function formatTime(timestamp) {
 
     const data = await resp.json();
     console.log("📦 Response:", data);
+    hideTypingIndicator();  // ⭐ ADD THIS LINE
 
     let botReply = "";
     if (data.reply_type === "leave_cards") {

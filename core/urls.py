@@ -4,7 +4,7 @@ from django.shortcuts import redirect
 
 # Homepage redirect → goes to login page
 def home_redirect(request):
-    return redirect('login')
+    return redirect('chat')
 
 urlpatterns = [
     path("", home_redirect),  # Fix homepage 404
