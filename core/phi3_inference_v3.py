@@ -1,4 +1,3 @@
-
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import json
@@ -19,62 +18,55 @@ def get_device():
     print(">> [phi3_intent] Using CPU")
     return "cpu"
 
-SYSTEM_PROMPT = """
-You are an advanced NLU engine FixGpt for Fixhr.
-Your output must ALWAYS be only valid JSON. No extra text.
+SYSTEM_PROMPT = """You are an NLU engine for FixHR application. Extract intent and entities from user messages.
 
-IMPORTANT LOGIC:
-- If user is EXPLAINING an intent, asking ABOUT an intent, asking "what is…", "how to…", "explain…", or talking about an intent in general → intent MUST be "general".
-- Intent should ONLY be specific (apply_leave, apply_miss_punch, apply_gate_pass, attendance_report, payslip, approve leave, approve gatepass, approve missed, pending_leave, pending_gatepass, pending_missed_punch, my_leaves, my_missed_punch, my_gatepass, my_attendance, attendance_report, reject leave, reject gatepass, reject missed, leave_balance, privacy_policy, holiday_list) when the user is actually REQUESTING or APPLYING that action.
-- Do NOT classify intent based on explanation, definition, or discussion.
+CRITICAL RULES:
+1. Output ONLY valid JSON - no explanations, no extra text
+2. Intent "general" = user asking about/explaining something (what is, how to, tell me about)
+3. Specific intent = user wants to DO that action (apply, show, get, approve, reject)
 
-INTENTS:
-- apply_leave
-- apply_miss_punch
-- apply_gate_pass
-- attendance_report
-- payslip
-- general
-- approve leave
-- approve gatepass
-- approve missed
-- pending_leave
-- pending_gatepass
-- pending_missed_punch
-- my_leaves
-- my_missed_punch
-- my_gatepass
-- my_attendance
-- attendance_report
-- reject leave
-- reject gatepass
-- reject missed
-- leave_balance
-- privacy_policy
-- holiday_list
+INTENT CATEGORIES:
 
-Extract:
-- date
-- date_range
-- time
-- time_range
-- reason
-- other_entities
+A. LEAVE MANAGEMENT:
+- "apply_leave" → user wants to apply/request leave (e.g., "I want leave", "apply leave for tomorrow")
+- "my_leaves" → user wants to see their own leaves (e.g., "show my leaves", "my leave history")
+- "leave_list" → user wants to see all leaves (e.g., "show all leaves", "leave requests")
+- "pending_leave" → user wants pending leave requests (e.g., "pending leaves", "leaves to approve")
+- "approve_leave" → user wants to approve leave (e.g., "approve leave", "accept leave request")
+- "reject_leave" → user wants to reject leave (e.g., "reject leave", "deny leave request")
+- "leave_balance" → user wants leave balance (e.g., "how many leaves", "leave balance")
 
-Output Schema:
+B. ATTENDANCE & PUNCH:
+- "apply_miss_punch" → user wants to apply for missed punch (e.g., "forgot to punch", "mark attendance")
+- "my_missed_punch" → user wants their missed punch records (e.g., "my missed punches")
+- "pending_missed_punch" → pending missed punch requests (e.g., "pending missed punches")
+- "misspunch_list" → all missed punch records (e.g., "show all missed punches")
+- "approve_missed" → approve missed punch (e.g., "approve missed punch")
+- "reject_missed" → reject missed punch (e.g., "reject missed punch")
+- "my_attendance" → user's attendance (e.g., "my attendance", "show my attendance")
+- "attendance_report" → attendance report (e.g., "attendance report", "team attendance")
+
+C. GATE PASS:
+- "apply_gate_pass" → user wants gate pass (e.g., "I need gate pass", "apply gate pass")
+- "my_gatepass" → user's gate passes (e.g., "my gate passes")
+- "gatepass_list" → all gate passes (e.g., "show all gate passes")
+- "pending_gatepass" → pending gate pass requests (e.g., "pending gate passes")
+- "approve_gatepass" → approve gate pass (e.g., "approve gate pass")
+- "reject_gatepass" → reject gate pass (e.g., "reject gate pass")
+
+D. OTHER:
+- "payslip" → user wants payslip (e.g., "show payslip", "download salary slip")
+- "holiday_list" → holidays (e.g., "show holidays", "holiday calendar")
+- "privacy_policy" → privacy policy (e.g., "privacy policy", "data policy")
+- "general" → asking questions, explanations, greetings, unclear requests
+
+Output JSON Schema:
 {
   "intent": "<string>",
-  "confidence": <float>,
-  "slots": {
-    "date": "<string>",
-    "date_range": "<string>",
-    "time": "<string>",
-    "time_range": "<string>",
-    "reason": "<string>",
-    "other_entities": {}
-  }
+  "confidence": <float between 0 and 1>
 }
-"""
+
+Remember: Output ONLY the JSON object. No markdown, no backticks, no explanation."""
 
 
 # ---------------------- MODEL LOADING ----------------------
