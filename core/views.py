@@ -13,7 +13,9 @@ from core.model_inference2 import model_response
 from core.phi3_inference_v3 import intent_model_call
 
 from core.extract_date_time import extract_datetime_info
-
+from django.utils import timezone
+from .models import ChatConversation
+import uuid
 
 # ---------------- API Endpoints ----------------
 FIXHR_LOGIN_URL = "https://dev.fixhr.app/api/auth/login"
@@ -98,9 +100,6 @@ def search_conversations(request):
 
 # views.py - Replace all conversation functions with these
 
-from django.utils import timezone
-from .models import ChatConversation
-import uuid
 
 @csrf_exempt
 def get_conversations(request):
@@ -1553,6 +1552,9 @@ def login_api(request):
             request.session["employee_id"] = user.get("emp_id")
             request.session["name"] = user.get("name", "User")
             request.session["email"] = user.get("email")
+            request.session["phone"] = user.get("phone")  # ⭐ FIXED
+            
+            request.session["avatar_url"] = user.get("profile_photo")  # ⭐ FIXED
             # store role information for UI permissions
             role = (user.get("role") or {})
             request.session["role_name"] = role.get("role_name") or "Employee"
@@ -1580,18 +1582,23 @@ def check_authentication(request):
 
 
 def chat_page(request):
-    if not check_authentication(request):
-        return redirect("login")
+    is_logged_in = check_authentication(request)
+
     return render(
         request,
         "chat_page.html",
         {
-            "message": f"Welcome {request.session.get('name','User')}! You are logged in.",
-            "employee_id": request.session.get("employee_id"),
-            "name": request.session.get("name"),
-            "role_name": request.session.get("role_name"),
+            "is_logged_in": is_logged_in,
+            "employee_id": request.session.get("employee_id") if is_logged_in else None,
+            "name": request.session.get("name") if is_logged_in else "",
+            "role_name": request.session.get("role_name") if is_logged_in else "",
+            "email": request.session.get("email") if is_logged_in else "",  # ⭐ FIXED
+            "phone": request.session.get("phone") if is_logged_in else "",  # ⭐ FIXED
+            "avatar_url": request.session.get("avatar_url") if is_logged_in else "",  # ⭐ FIXED
         },
     )
+
+
 
 
 def dashboard_page(request):
@@ -1668,7 +1675,7 @@ def leave_management_page(request):
 
 def logout_view(request):
     request.session.flush()
-    return redirect("login")
+    return redirect("chat")
 
 
 # ---------------- Model Management ----------------
@@ -2283,40 +2290,54 @@ def chat_history(request):
 # ---------------- CHAT API ----------------
 @csrf_exempt
 def chat_api(request):
-    """Main chat API endpoint using phi3_inference_v3 for intent classification and model_inference2 for general responses"""
-    if not check_authentication(request):
-        return JsonResponse({"error": "Unauthorized"}, status=401)
+    """Main chat API endpoint using phi3_inference_v3 for intent classification 
+       and model_inference2 for general responses"""
     
+    is_logged_in = check_authentication(request)
+    token = request.session.get("fixhr_token") if is_logged_in else None
+
     if request.method != "POST":
         return JsonResponse({"error": "Invalid method"}, status=405)
-    
+
     try:
         body = json.loads(request.body.decode())
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON body"}, status=400)
-    
+
     msg = (body.get("message") or "").strip()
     if not msg:
         return JsonResponse({"error": "Message text is required"}, status=400)
-    
-    token = request.session.get("fixhr_token")
+
     user_id = request.session.get("employee_id") or "default_user"
 
-
+    # Initialize history
     if user_id not in CHAT_HISTORY:
         CHAT_HISTORY[user_id] = []
 
-    # Store user message
-    CHAT_HISTORY[user_id].append({
-        "role": "user",
-        "text": msg
-    })
+    CHAT_HISTORY[user_id].append({"role": "user", "text": msg})
 
-    
+    # Memory setup
     SESSION_MEMORY.setdefault(user_id, {"date": None, "leave_type": None, "reason": None})
     chat_memory = SESSION_MEMORY[user_id]
-    
+
     print("💬 User Message:", msg)
+
+    # -------------------------------
+    # 🧠 INTENT CLASSIFICATION
+    # -------------------------------
+    classification = classify_message(msg)
+    intent = classification.get("intent") or "general"
+
+    # -------------------------------
+    # 🔥 Guest User Restriction Logic
+    # -------------------------------
+    if not is_logged_in:
+        if intent != "general":  
+            return JsonResponse({
+                "reply": "⚠️ Please login to access HR features like leave, attendance, payslip, gatepass & approvals.",
+                "reply_type": "text_only"
+            })
+
     
     # 1) Classify intent using phi3_inference_v3
     classification = classify_message(msg)
@@ -2407,7 +2428,7 @@ def chat_api(request):
         payload.update(meta)
         return JsonResponse(payload)
     
-    elif task == "pending_gatepass":
+    elif task == "pending_gatepass" or task == "gatepass_list":
         return handle_pending_gatepass(token, request.session.get("role_name"))
     
     elif task == "apply_missed_punch" or task == "apply_miss_punch":
@@ -2420,7 +2441,7 @@ def chat_api(request):
         payload.update(meta)
         return JsonResponse(payload)
     
-    elif task == "pending_missed_punch" or task == "pending_miss_punch":
+    elif task == "pending_missed_punch" or task == "pending_miss_punch" or task == "misspunch_list":
         return handle_pending_missed_punch(token, request.session.get("role_name"))
     
     elif task == "my_missed_punch" or task == "my_miss_punch":
@@ -2465,3 +2486,6 @@ def chat_api(request):
     payload.update(meta)
     
     return JsonResponse(payload)
+
+
+
