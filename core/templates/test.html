@@ -1,0 +1,2194 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FixGPT.ai — Chat</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+   :root {
+      --bg: #0f1115;
+      --card: #1a1c25;
+      --border: #1c2030;
+      --text: #e5e7eb;
+      --accent: #10a37f;
+      --muted: #a3a8b3;
+      --approve: #16a34a;
+      --reject: #ef4444;
+   }
+
+   :root.light {
+      --bg: #ffffff;
+      --card: #f2f4f7;
+      --border: #d5d8df;
+      --text: #1f2937;
+      --accent: #0ea5e9;
+      --muted: #6b7280;
+      --approve: #16a34a;
+      --reject: #dc2626;
+   }
+
+   body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+   }
+
+   /* ====================== SIDEBAR ====================== */
+   .sidebar {
+      overflow: hidden; 
+      width: 260px;
+      background: var(--card);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      transition: width 0.3s ease;
+   }
+
+   .brand {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+   }
+   .brand .user-name {
+      font-weight: 600;
+   }
+
+   /* ====================== SIDEBAR BUTTONS & ITEMS ====================== */
+   .sidebar-btn,
+   .history-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 16px;
+      margin: 6px 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+      position: relative;
+   }
+
+   .sidebar-btn:hover,
+   .history-item:hover {
+      background: var(--card);
+      border-color: var(--accent);
+   }
+
+   .sidebar-btn .icon-svg,
+   .history-item .icon-svg {
+      width: 22px;
+      height: 22px;
+      color: var(--accent);
+      flex-shrink: 0;
+   }
+   .history-item .icon-svg {
+    color: var(--accent) !important;
+}
+
+
+   .text-label,
+   /* ⭐ FIX: Prevent long messages from overflowing */
+.text-content {
+   flex: 1;
+   min-width: 0;
+   overflow: hidden;
+}
+
+.text-content .title {
+   max-width: 100%;
+   overflow: hidden;
+   text-overflow: ellipsis;
+   white-space: nowrap;
+   display: block;
+}
+
+.text-content .time {
+   font-size: 11px;
+   color: var(--muted);
+   margin-top: 2px;
+}
+
+.delete-btn {
+   background: none;
+   border: none;
+   color: var(--muted);
+   font-size: 18px;
+   cursor: pointer;
+   opacity: 0;
+   transition: opacity 0.2s;
+   padding: 4px 8px;
+   border-radius: 6px;
+   flex-shrink: 0;  /* ⭐ Add this line */
+}
+   .delete-btn:hover {
+      background: var(--reject);
+      color: white;
+   }
+
+   /* Active Chat */
+   .history-item.active {
+      background: var(--border) !important;
+      border-color: var(--accent) !important;
+   }
+
+   /* ====================== MINI SIDEBAR MODE ====================== */
+   .sidebar.mini {
+      width: 72px;
+      align-items: center;
+   }
+
+   /* HIDE text-based elements in mini mode */
+.sidebar.mini .brand,
+.sidebar.mini .user-name,
+.sidebar.mini .text-label,
+.sidebar.mini .text-content,
+.sidebar.mini .delete-btn {
+    display: none !important;
+}
+
+/* SEARCH BOX mini mode */
+.sidebar.mini .sidebar-search-box {
+    padding: 0;
+}
+
+.sidebar.mini .search-wrapper {
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    justify-content: center;
+}
+
+/* Hide input field in mini mode */
+.sidebar.mini .search-wrapper input {
+    display: none !important;
+}
+
+   .sidebar.mini .sidebar-btn,
+   .sidebar.mini .history-item {
+      justify-content: center;
+      padding: 14px !important;
+      margin: 8px 10px;
+      width: 48px;
+      height: 48px;
+   }
+
+   .sidebar.mini .icon-svg {
+      width: 24px;
+      height: 24px;
+   }
+
+   /* Tooltip on hover in mini mode */
+   .sidebar.mini .sidebar-btn,
+   .sidebar.mini .history-item {
+      position: relative;
+   }
+   .sidebar.mini .sidebar-btn::after,
+   .sidebar.mini .history-item::after {
+      content: attr(title);
+      position: absolute;
+      left: 70px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: #000;
+      color: white;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      z-index: 1000;
+   }
+   .sidebar.mini .sidebar-btn:hover::after,
+   .sidebar.mini .history-item:hover::after {
+      opacity: 1;
+      
+   }
+   /* ⭐ FIXED: Search Wrapper Tooltip */
+.sidebar.mini .search-wrapper {
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    justify-content: center;
+    position: relative;  /* ⭐ Add this */
+}
+
+.sidebar.mini .search-wrapper::after {
+    content: attr(title);
+    position: fixed;     /* ⭐ Changed to fixed */
+    left: 80px;          /* ⭐ Adjusted */
+    top: auto;           /* ⭐ Auto positioning */
+    transform: translateY(-50%);
+    background: #000;
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+    z-index: 10000;
+}
+
+.sidebar.mini .search-wrapper:hover::after {
+    opacity: 1;
+}
+
+
+   /* ====================== PROFILE SECTION ====================== */
+   .sidebar-profile-section {
+      margin: 16px 16px;
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+   }
+
+   .sidebar.mini .sidebar-profile-section {
+      justify-content: center;
+      margin: 16px 0;
+   }
+
+   .profile-toggle-btn {
+      width: 50px;
+      height: 50px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.2s;
+   }
+   .sidebar.mini .profile-toggle-btn {
+      width: 40px;
+      height: 40px;
+   }
+
+   .profile-toggle-btn img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+   }
+   .profile-toggle-btn:hover {
+      border-color: var(--accent);
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(16, 163, 127, 0.4);
+   }
+
+   /* Profile Dropdown */
+   .sidebar-profile-dropdown {
+      position: absolute;
+      bottom: 70px;
+      left: 16px;
+      width: 220px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.3s ease;
+      z-index: 1000;
+   }
+   .sidebar.mini .sidebar-profile-dropdown {
+      left: 80px;
+      bottom: auto;
+      top: 50%;
+      transform: translateY(-50%);
+   }
+   .sidebar-profile-dropdown.show {
+      max-height: 400px;
+      opacity: 1;
+      transform: translateY(0);
+   }
+   .sidebar-profile-dropdown::before {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      left: 20px;
+      width: 16px;
+      height: 16px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-left: none;
+      transform: rotate(45deg);
+      z-index: -1;
+   }
+   .sidebar-profile-dropdown div {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.2s;
+   }
+   .sidebar-profile-dropdown div:hover {
+      background: var(--border);
+      color: var(--accent);
+   }
+   .sidebar-profile-dropdown div:last-child { border-bottom: none; }
+
+   /* ====================== CHAT AREA ====================== */
+   .chat-container { flex: 1; display: flex; flex-direction: column; }
+   .chat-header {
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 600;
+   }
+   .version-chip {
+      background: var(--accent);
+      color: #fff;
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 12px;
+   }
+
+   .chat-messages {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+   }
+   .msg {
+      max-width: 75%;
+      margin-bottom: 12px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      line-height: 1.5;
+      word-wrap: break-word;
+   }
+   .msg.user {
+      background: var(--accent);
+      color: #fff;
+      margin-left: auto;
+      border-bottom-right-radius: 4px;
+   }
+   .msg.bot {
+      background: var(--card);
+      color: var(--text);
+      margin-right: auto;
+      border: 1px solid var(--accent);
+      border-bottom-left-radius: 4px;
+   }
+
+   .chat-input {
+      display: flex;
+      padding: 16px;
+      border-top: 1px solid var(--border);
+      gap: 8px;
+   }
+   textarea {
+      flex: 1;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      padding: 12px;
+      resize: none;
+      font-family: inherit;
+   }
+   textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+   }
+
+   #sendBtn:hover {
+      opacity: 0.9;
+   }
+
+   /* Cards & Buttons */
+   .gatepass-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      margin: 10px 0;
+   }
+   .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      margin: 4px;
+      transition: all 0.2s;
+   }
+   .btn.approve { background: var(--approve); color: white; }
+   .btn.reject { background: var(--reject); color: white; }
+   .btn:hover { opacity: 0.9; transform: translateY(-2px); }
+
+   /* Search Box */
+.sidebar-search-box {
+    padding: 0 16px;
+    margin-top: 10px;
+}
+
+.search-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 10px 14px;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+}
+
+.search-wrapper input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: none;
+    color: var(--text);
+    font-size: 14px;
+}
+
+/* Placeholder opacity logic */
+.search-wrapper input::placeholder {
+    color: var(--muted);
+    transition: opacity 0.2s;
+}
+
+.search-wrapper input:focus::placeholder {
+    opacity: 0.4;
+}
+
+/* Mini mode behavior */
+.sidebar.mini .sidebar-search-box {
+    padding: 0;
+}
+
+.sidebar.mini .search-wrapper {
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    justify-content: center;
+}
+
+.sidebar.mini .search-wrapper input {
+    display: none;
+}
+/* MINI MODE: hide all individual chat icons inside chat list */
+.sidebar.mini #historyList .history-item {
+    display: none !important;
+}
+
+/* Show only ONE chat icon + count */
+.sidebar.mini #chatCounterBox {
+    display: flex !important;
+}
+
+/* All icons use accent color (blue in light, green in dark) */
+.icon-svg {
+    color: var(--accent) !important;
+}
+/* PERFECT CENTERED INPUT BELOW WELCOME CARD */
+.centered-input {
+    position: absolute;
+    left: 55%;
+    transform: translateX(-50%);
+    width: 45%;
+    display: flex;
+    gap: 10px;
+}
+
+.centered-input textarea {
+    height: 44px !important;
+    border-radius: 12px;
+    font-size: 14px;
+    padding: 10px 14px;
+}
+
+
+
+.chat-input-normal {
+    position: static !important;
+    width: 100% !important;
+    transform: none !important;
+}
+
+
+.send-icon-btn:hover {
+    opacity: 0.85;
+    transform: translateY(-2px);
+}
+.send-icon-only {
+    background: none;
+    border: none;
+    padding: 0;
+    margin-left: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.send-plane-icon {
+    width: 32px;        /* SIZE: Increase/Decrease as you like */
+    height: 32px;
+    transition: 0.2s ease;
+    fill: var(--accent);   /* Auto theme-based color */
+}
+
+.send-plane-icon:hover {
+    transform: translateY(-3px);
+    opacity: 0.9;
+}
+/* Scrollable History List */
+#historyList {
+   flex: 1;
+   overflow-y: auto;
+   overflow-x: hidden;
+   padding: 0 4px;
+}
+
+/* Beautiful Custom Scrollbar */
+#historyList::-webkit-scrollbar {
+   width: 6px;
+}
+
+#historyList::-webkit-scrollbar-track {
+   background: transparent;
+}
+
+#historyList::-webkit-scrollbar-thumb {
+   background: var(--border);
+   border-radius: 10px;
+   transition: background 0.2s;
+}
+
+#historyList::-webkit-scrollbar-thumb:hover {
+   background: var(--accent);
+}
+/* ====================== CHAT COUNTER TOOLTIP (MINI MODE) ====================== */
+.sidebar.mini #chatCounterBox {
+    position: relative;
+    overflow: visible !important;
+}
+
+.sidebar.mini #chatCounterBox::after {
+    content: "Chats";
+    position: absolute;
+    left: 60px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #000;
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+    z-index: 10000;
+}
+
+.sidebar.mini #chatCounterBox:hover::after {
+    opacity: 1;
+}
+
+/* ⭐ FIX: Mini sidebar overflow */
+.sidebar.mini {
+    width: 72px;
+    align-items: center;
+    overflow: visible !important;
+}
+/* ====================== TYPING INDICATOR ====================== */
+.typing-indicator {
+   max-width: 75%;
+   margin-bottom: 12px;
+   padding: 16px 20px;
+   border-radius: 12px;
+   background: var(--card);
+   border: 1px solid var(--accent);
+   border-bottom-left-radius: 4px;
+   display: flex;
+   align-items: center;
+   gap: 6px;
+}
+
+.typing-indicator span {
+   width: 8px;
+   height: 8px;
+   border-radius: 50%;
+   background: var(--accent);
+   animation: typing-bounce 1.4s infinite ease-in-out;
+}
+
+.typing-indicator span:nth-child(1) {
+   animation-delay: 0s;
+}
+
+.typing-indicator span:nth-child(2) {
+   animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+   animation-delay: 0.4s;
+}
+
+@keyframes typing-bounce {
+   0%, 60%, 100% {
+      transform: translateY(0);
+      opacity: 0.7;
+   }
+   30% {
+      transform: translateY(-10px);
+      opacity: 1;
+   }
+}
+
+
+
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+
+  <!-- 1️⃣ BRAND SECTION (Login Button or User Name) -->
+  <div class="brand">
+    {% if is_logged_in %}
+      <div class="user-name">{{ name }}</div>
+    {% else %}
+      <button onclick="window.location.href='/login/'"
+    style="
+        width:100%;
+        padding:14px 18px;
+        background: linear-gradient(135deg, var(--accent), #0c8b68);
+        border:none;
+        border-radius:14px;
+        font-size:15px;
+        font-weight:600;
+        cursor:pointer;
+        color:#fff;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        gap:10px;
+        box-shadow:0 4px 12px rgba(16,163,127,0.35);
+        transition:0.25s ease;
+        margin-top:4px;
+    "
+    onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 20px rgba(16,163,127,0.55)'"
+    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(16,163,127,0.35)'"
+>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+        <polyline points="10 17 15 12 10 7"/>
+        <line x1="15" y1="12" x2="3" y2="12"/>
+    </svg>
+    Login
+</button>
+
+    {% endif %}
+  </div>
+
+  <!-- 2️⃣ NEW CHAT BUTTON (Always visible) -->
+  <div class="sidebar-btn" id="newChatBtn" title="New Chat">
+    <svg class="icon-svg" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+    </svg>
+    <span class="text-label">New Chat</span>
+  </div>
+
+  <!-- 3️⃣ SEARCH BOX (Only if logged in) -->
+  {% if is_logged_in %}
+  <div class="sidebar-search-box">
+    <div class="search-wrapper" title="Search chats">
+      <svg class="icon-svg" viewBox="0 0 24 24">
+        <path fill="currentColor"
+        d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 
+           6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 
+           4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 
+           9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+      </svg>
+      <input id="historySearch"
+         type="text"
+         placeholder="Search chats"
+         oninput="searchHistory()"
+      />
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- 4️⃣ CHAT COUNTER BOX (Mini mode) -->
+  <div id="chatCounterBox" 
+       style="display:none; align-items:center; justify-content:center; padding:16px; gap:10px;">
+    <svg class="icon-svg" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
+    </svg>
+    <span id="chatCount" style="font-size:14px; font-weight:600;"></span>
+  </div>
+
+  <!-- 5️⃣ CHAT HISTORY LIST (Only if logged in) -->
+  {% if is_logged_in %}
+  <div id="historyList"></div>
+  {% endif %}
+
+  <!-- 6️⃣ PROFILE SECTION (Only if logged in) -->
+  {% if is_logged_in %}
+  <div class="sidebar-profile-section" 
+       style="display:flex; justify-content:flex-start; align-items:center; padding: 0 16px; margin-top: auto; position: relative;">
+      
+    <button class="profile-toggle-btn" id="profileToggleBtn">
+      <img src="{{ avatar_url }}" alt="Profile"
+           onerror="this.src='https://dev.fixhr.app/uploads/employee_profile/FHAA0049/emp_profile_68b96feb9341d129518309.jpg'">
+    </button>
+    
+    <div class="sidebar-profile-dropdown" id="sidebarProfileDropdown">
+      <div id="openProfileBtn">👤 Profile</div>
+      <div id="themeToggleBtn">🌙 Dark Mode</div>
+      <div id="logoutBtn2">🚪 Logout</div>
+    </div>
+
+  </div>
+  {% endif %}
+
+</aside>
+
+<!-- CHAT SECTION -->
+<section class="chat-container">
+  <div class="chat-header">
+    <button id="sidebarToggle" class="sidebar-toggle-btn">☰</button>
+
+      <div class="header-left">
+          <span>FixGPT.ai</span>
+      </div>
+      <div class="version-chip">v1.0</div>
+  </div>
+
+  <div class="chat-messages" id="chatMessages"></div>
+
+  <div class="chat-input">
+      <textarea id="msgInput" rows="1" placeholder="Type your message..."></textarea>
+      <button id="sendBtn" class="send-icon-only">
+    <svg class="send-plane-icon" viewBox="0 0 24 24">
+        <path d="M2 3l20 9-20 9 3-9z"></path>
+    </svg>
+</button>
+
+
+
+  </div>
+</section>
+
+<!-- PROFILE PANEL -->
+<div id="profilePanel" style="position:fixed;top:0;right:-400px;width:340px;height:100%;background:var(--card);border-left:1px solid var(--border);padding:20px;transition:right 0.3s;z-index:9999;box-shadow:-5px 0 20px rgba(0,0,0,0.3);">
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h3>Profile</h3>
+      <button onclick="closeProfile()" style="background:none;border:none;font-size:24px;color:var(--text);cursor:pointer;padding:5px 10px;">✖</button>
+  </div>
+
+  <div style="text-align:center;margin-top:20px;">
+      <img id="p_avatar" style="width:120px;height:120px;border-radius:50%;border:3px solid var(--accent);object-fit:cover;"  src="{{ avatar_url }}"
+     onerror="this.src='https://dev.fixhr.app/uploads/employee_profile/default.jpg'">
+      <h2 id="p_name" style="margin:10px 0 4px;">{{ name }}</h2>
+      <p id="p_role" style="color:var(--muted);margin:0 0 20px;">{{ role_name }}</p>
+  </div>
+
+  <p><b>Email:</b> <span id="p_email">{{ email }}</span></p>
+  <p><b>Phone:</b> <span id="p_phone">{{ phone }}</span></p>
+  <p><b>Emp ID:</b> <span id="p_empid">{{ employee_id }}</span></p>
+</div>
+
+<script>
+// ============================================
+// PROFILE DROPDOWN TOGGLE
+// ============================================
+const profileToggleBtn = document.getElementById("profileToggleBtn");
+const sidebarProfileDropdown = document.getElementById("sidebarProfileDropdown");
+
+if (profileToggleBtn) {
+    profileToggleBtn.onclick = () => {
+        sidebarProfileDropdown.classList.toggle("show");
+    };
+}
+
+
+// ============================================
+// PROFILE DROPDOWN ACTIONS
+// ============================================
+
+// Open Profile Panel
+const openProfileBtn = document.getElementById("openProfileBtn");
+if (openProfileBtn) {
+    openProfileBtn.onclick = () => {
+        sidebarProfileDropdown.classList.remove("show");
+        openProfilePanel();
+    };
+}
+
+
+function openProfilePanel() {
+    document.getElementById("profilePanel").style.right = "0px";
+}
+
+// Close Profile Panel
+function closeProfile() {
+    document.getElementById("profilePanel").style.right = "-400px";
+}
+// ===============================
+// SINGLE THEME TOGGLE BUTTON
+// ===============================
+const themeToggleBtn = document.getElementById("themeToggleBtn");
+
+function updateThemeButtonText() {
+    if (themeToggleBtn) {
+        if (document.documentElement.classList.contains("light")) {
+            themeToggleBtn.textContent = "🌙 Dark Mode";
+        } else {
+            themeToggleBtn.textContent = "☀️ Light Mode";
+        }
+    }
+}
+
+// Load saved theme on startup
+if (localStorage.getItem("theme") === "light") {
+    document.documentElement.classList.add("light");
+}
+updateThemeButtonText();
+
+// ⭐ WRAP FULL TOGGLE ACTION INSIDE CONDITION
+if (themeToggleBtn) {
+    themeToggleBtn.onclick = () => {
+        const root = document.documentElement;
+
+        // Toggle theme
+        root.classList.toggle("light");
+
+        // Save mode
+        localStorage.setItem(
+            "theme",
+            root.classList.contains("light") ? "light" : "dark"
+        );
+
+        // Update text
+        updateThemeButtonText();
+
+        // Close dropdown (ONLY if logged in)
+        if (sidebarProfileDropdown) {
+            sidebarProfileDropdown.classList.remove("show");
+        }
+    };
+}
+
+
+// Load saved theme on startup
+if (localStorage.getItem("theme") === "light") {
+    document.documentElement.classList.add("light");
+}
+updateThemeButtonText();
+
+
+// Logout
+const logoutBtn2 = document.getElementById("logoutBtn2");
+if (logoutBtn2) {
+    logoutBtn2.onclick = async () => {
+        await fetch("/logout/", {
+            method: "POST",
+            headers: {"X-CSRFToken": "{{ csrf_token }}"}
+        });
+        window.location.href = "/chat/";
+    };
+}
+
+
+
+// ============================================
+// LOAD SAVED THEME
+// ============================================
+if (localStorage.getItem("theme") === "light") {
+    document.documentElement.classList.add("light");
+}
+
+
+// ⭐ ADD THESE TWO FUNCTIONS
+function showTypingIndicator() {
+    const box = document.getElementById("chatMessages");
+    const indicator = document.createElement("div");
+    indicator.className = "typing-indicator";
+    indicator.id = "typingIndicator";
+    indicator.innerHTML = `
+        <span></span>
+        <span></span>
+        <span></span>
+    `;
+    box.appendChild(indicator);
+    box.scrollTop = box.scrollHeight;
+}
+
+function hideTypingIndicator() {
+    const indicator = document.getElementById("typingIndicator");
+    if (indicator) {
+        indicator.remove();
+    }
+}
+
+// ============================================
+// CHAT FUNCTIONALITY
+// ============================================
+let currentConversationId = null;
+let currentMessages = [];
+
+async function sendMsg(msgText = null) {
+  // Remove welcome box on first message
+    const welcomeBox = document.getElementById("welcomeBox");
+    if (welcomeBox) welcomeBox.remove();
+
+    const msgInput = document.getElementById("msgInput");
+    let msg = msgText || msgInput.value.trim();
+    if (!msg) return;
+    
+    if (!msgText) {
+      appendMessage("user", msg);
+      currentMessages.push({ role: "user", text: msg });
+  }
+
+  showTypingIndicator();  // ⭐ Typing indicator
+
+  const resp = await fetch("/api/chat/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRFToken": "{{ csrf_token }}" },
+      body: JSON.stringify({ message: msg })
+  });
+
+   
+    const data = await resp.json();
+    console.log("📦 Response:", data);
+    hideTypingIndicator();  // ⭐ ADD THIS LINE
+
+    let botReply = "";
+    if (data.reply_type === "leave_cards") {
+      renderLeaveCards(data);
+      botReply = data.reply;
+    } else if (data.reply_type === "gatepass_cards") {
+      renderGatepassCards(data);
+      botReply = data.reply;
+    } else if (data.reply_type === "missed_cards") {
+      renderMissedCards(data);
+      botReply = data.reply;
+    } else if (data.reply_type === "my_missed_cards") {
+      renderMyMissedCards(data);
+      botReply = data.reply;
+    } else if (data.reply_type === "my_leaves") {
+      renderMyLeaves(data);
+      botReply = data.reply;
+    } else if (data.reply_type === "leave_balance") {
+      renderLeaveBalance(data);
+      botReply = data.reply;
+    } else if (data.reply_type === "attendance") {
+      renderAttendance(data);
+      botReply = data.reply;
+    } else if (data.reply_type === "payslip") {
+      renderPayslip(data);
+      botReply = data.reply;
+    } else if (data.reply_type === "holiday_list") {
+      renderHolidayList(data);
+      botReply = data.reply;
+    }  else if (data.reply_type === "privacy_policy") {   
+  renderPrivacyPolicy(data);
+  botReply = data.reply;
+} else if (data.reply_type === "tada_claims") {
+      renderTadaClaims(data);
+      botReply = data.reply;
+    } else if (data.reply_type === "travel_plans") {
+      renderTravelPlans(data);
+      botReply = data.reply;
+    }
+else {
+      renderBotReply(data.reply);
+      botReply = data.reply;
+    }
+
+    currentMessages.push({ 
+      role: "bot", 
+      text: botReply,
+      data: data
+    });
+
+    if (!msgText) msgInput.value = "";
+    await saveCurrentConversation();
+
+    const inputBox = document.querySelector(".chat-input");
+    inputBox.classList.remove("centered-input");
+    inputBox.classList.add("chat-input-normal");
+
+
+}
+
+function appendMessage(role, text, data = null) {
+    const box = document.getElementById("chatMessages");
+    const div = document.createElement("div");
+    div.className = "msg " + role;
+    div.innerHTML = text;
+
+    if (data && typeof data === "object") {
+        const pre = document.createElement("pre");
+        pre.style.cssText = `
+            background: var(--card);
+            padding: 8px;
+            border-radius: 6px;
+            margin-top: 6px;
+            font-size: 12px;
+            overflow-x: auto;
+        `;
+        pre.textContent = JSON.stringify(data, null, 2);
+        div.appendChild(pre);
+    }
+
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+}
+
+function renderBotReply(reply) {
+    appendMessage("bot", reply);
+}
+
+// RENDER FUNCTIONS
+function renderAttendance(data) {
+    const box = document.getElementById("chatMessages");
+    const container = document.createElement("div");
+    container.className = "msg bot";
+    container.innerHTML = `<b>${data.reply}</b>`;
+    box.appendChild(container);
+
+    const regWrap = document.createElement('div');
+    regWrap.className = 'gatepass-card';
+    const regTable = document.createElement('table');
+    regTable.style.width = '100%';
+    regTable.style.borderCollapse = 'collapse';
+
+    const thead = document.createElement('thead');
+    const trh = document.createElement('tr');
+    data.register.headers.forEach(h => {
+      const th = document.createElement('th');
+      th.textContent = h;
+      th.style.borderBottom = '1px solid var(--border)';
+      th.style.textAlign = 'left';
+      th.style.padding = '6px 8px';
+      trh.appendChild(th);
+    });
+    thead.appendChild(trh);
+    regTable.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    data.register.rows.forEach(r => {
+      const tr = document.createElement('tr');
+      const nameTd = document.createElement('td');
+      nameTd.textContent = r.name;
+      nameTd.style.padding = '6px 8px';
+      tr.appendChild(nameTd);
+      r.values.forEach(v => {
+        const td = document.createElement('td');
+        td.textContent = v;
+        td.style.padding = '6px 8px';
+        td.style.fontWeight = v === 'ABS' ? '600' : '400';
+        td.style.color = v === 'ABS' ? '#ef4444' : v === 'P' ? '#16a34a' : v === 'HD' || v === 'HP' ? '#f59e0b' : '#e5e7eb';
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    regTable.appendChild(tbody);
+    regWrap.appendChild(regTable);
+    box.appendChild(regWrap);
+
+    data.details.forEach(section => {
+      const card = document.createElement('div');
+      card.className = 'gatepass-card';
+      const title = document.createElement('div');
+      title.style.fontWeight = '600';
+      title.style.marginBottom = '6px';
+      title.textContent = `Details — ${section.emp_name}`;
+      card.appendChild(title);
+
+      const tbl = document.createElement('table');
+      tbl.style.width = '100%';
+      tbl.style.borderCollapse = 'collapse';
+      const thdr = document.createElement('tr');
+      ["Date","Status","In","Out","Hours","Late","OT","Remark"].forEach(h => {
+        const th = document.createElement('th');
+        th.textContent = h;
+        th.style.borderBottom = '1px solid var(--border)';
+        th.style.textAlign = 'left';
+        th.style.padding = '6px 8px';
+        thdr.appendChild(th);
+      });
+      tbl.appendChild(thdr);
+
+      section.rows.slice(0, 20).forEach(r => {
+        const tr = document.createElement('tr');
+        const cells = [r.date, r.status, r.in_time, r.out_time, r.work_hrs, r.is_late ? 'Yes' : 'No', r.overtime_hours, r.remark];
+        cells.forEach(c => {
+          const td = document.createElement('td');
+          td.textContent = c || '-';
+          td.style.padding = '6px 8px';
+          tr.appendChild(td);
+        });
+        tbl.appendChild(tr);
+      });
+
+      if (section.rows.length > 20) {
+        const more = document.createElement('div');
+        more.style.marginTop = '6px';
+        more.style.color = 'var(--muted)';
+        more.textContent = `…and ${section.rows.length - 20} more`;
+        card.appendChild(more);
+      }
+
+      card.appendChild(tbl);
+      box.appendChild(card);
+    });
+
+    box.scrollTop = box.scrollHeight;
+}
+
+// render tada requests ===============================================
+
+function renderTravelPlans(data) {
+    const box = document.getElementById("chatMessages");
+    const wrap = document.createElement("div");
+    wrap.className = "msg bot";
+    wrap.style.padding = "0";
+
+    const card = document.createElement("div");
+    card.style.cssText = `
+        background: var(--bg);
+        border: 1px solid #2b3039;
+        border-radius: 12px;
+        padding: 18px 20px;
+        margin: 10px 0;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    `;
+
+    // data.travel ya direct object dono handle kare
+    const travel = data.travel || data || {};
+    const summary = travel.summary || {};
+    const plans = travel.plans || [];
+
+    function formatDate(value) {
+        if (!value) return "N/A";
+        if (typeof value === "string") {
+            if (value.includes("T")) return value.split("T")[0];
+            return value;
+        }
+        return String(value);
+    }
+
+    card.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+            <div>
+                <h2 style="margin:0; color:#38bdf8; font-size:18px;">🧳 Travel Plans</h2>
+                <div style="font-size:12px; color:#9ca3af; margin-top:4px;">
+                    Total: <b>${summary.total_plans || plans.length}</b> • 
+                    This page: <b>${summary.count || plans.length}</b>
+                </div>
+                <div style="font-size:12px; color:#9ca3af; margin-top:2px;">
+                    Page ${summary.page || 1} of ${summary.last_page || "?"}
+                </div>
+                <div style="font-size:11px; color:#6b7280; margin-top:2px;">
+                    Status filter: <b>${summary.status_filter || "all"}</b>
+                </div>
+            </div>
+            <div style="text-align:right;">
+                <div style="padding:4px 10px; background:var(--card); border-radius:6px; font-size:12px; margin-bottom:4px;">
+                    Total Expense<br>
+                    <span style="font-weight:600; color:#facc15;">₹${summary.total_expense_sum || "0.00"}</span>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin:12px 0 8px; font-weight:600; color:#a5b4fc;">Plan List</div>
+    `;
+
+    const table = document.createElement("table");
+    table.style.cssText = `
+        width:100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    `;
+
+    table.innerHTML = `
+        <thead>
+            <tr>
+                <th style="text-align:left;padding:8px; border-bottom:1px solid #333;">Plan</th>
+                <th style="text-align:left;padding:8px; border-bottom:1px solid #333;">Travel</th>
+                <th style="text-align:right;padding:8px; border-bottom:1px solid #333;">Expense</th>
+                <th style="text-align:right;padding:8px; border-bottom:1px solid #333;">Status / Action</th>
+            </tr>
+        </thead>
+    `;
+
+    const tbody = document.createElement("tbody");
+
+    plans.forEach(p => {
+        const row = document.createElement("tr");
+
+        const dateRange = `${formatDate(p.from_date)} → ${formatDate(p.to_date)}`;
+        const timeRange = (p.start_time || p.end_time)
+            ? ` (${p.start_time || "?"} → ${p.end_time || "?"})`
+            : "";
+
+        const isClaimable = !!p.is_claimable;
+
+        // Button click helpers
+        function sendTravelAction(action) {
+            // yahi pe tum apna existing message dispatcher use kar rahe ho
+            // same as TADA wale sendMessageToChatbot
+            sendMessageToChatbot({
+                action,
+                plan_id: p.plan_id,
+                plan_db_id: p.plan_db_id,
+            });
+        }
+
+        row.innerHTML = `
+            <td style="padding:8px; vertical-align:top;">
+                <div style="font-weight:500;">${p.plan_name || p.plan_id || "Travel Plan"}</div>
+                <div style="font-size:11px; color:#9ca3af; margin-top:2px;">
+                    ID: ${p.plan_id || "-"}
+                </div>
+                ${p.call_id ? `<div style="font-size:11px; color:#9ca3af;">Call ID: ${p.call_id}</div>` : ""}
+            </td>
+            <td style="padding:8px; vertical-align:top;">
+                ${dateRange}${timeRange}
+                <div style="font-size:11px; color:#9ca3af; margin-top:4px;">
+                    👤 ${p.employee_name || "-"} (${p.employee_code || "-"})
+                </div>
+                <div style="font-size:11px; color:#9ca3af; margin-top:2px;">
+                    🧭 ${p.destination || "N/A"}
+                </div>
+                <div style="font-size:11px; color:#6b7280; margin-top:2px;">
+                    🎯 ${p.purpose || "-"}
+                </div>
+                <div style="font-size:11px; color:#6b7280; margin-top:2px;">
+                    Type: ${p.travel_type || "-"}
+                </div>
+            </td>
+            <td style="padding:8px; text-align:right; vertical-align:top;">
+                <div style="font-weight:600;">₹${p.total_expense || "0.00"}</div>
+                <div style="font-size:11px; color:#9ca3af; margin-top:4px;">
+                    Plan editable: <b style="color:${p.is_plan_editable ? "#4ade80" : "#f87171"};">${p.is_plan_editable ? "Yes" : "No"}</b>
+                </div>
+                <div style="font-size:11px; color:#9ca3af;">
+                    Expense editable: <b style="color:${p.is_expense_editable ? "#4ade80" : "#f87171"};">${p.is_expense_editable ? "Yes" : "No"}</b>
+                </div>
+                <div style="font-size:11px; color:#9ca3af;">
+                    Claimable: <b style="color:${p.is_claimable ? "#facc15" : "#9ca3af"};">${p.is_claimable ? "Yes" : "No"}</b>
+                </div>
+            </td>
+            <td style="padding:8px; text-align:right; vertical-align:top;" id="tp-action-${p.plan_id}">
+                <div style="font-size:12px; margin-bottom:6px;">
+                    <span style="color:#e5e7eb; font-weight:500;">${p.status || "Status N/A"}</span>
+                </div>
+                ${
+                    isClaimable
+                        ? `
+                        <button class="btn-tp-claim" style="padding:4px 8px; margin-bottom:4px; background:#facc15; color:#000; border:none; border-radius:6px; cursor:pointer; font-size:11px;">
+                            Create Claim
+                        </button>
+                        `
+                        : ""
+                }
+                <button class="btn-tp-details" style="padding:4px 8px; background:#60a5fa; color:#000; border:none; border-radius:6px; cursor:pointer; font-size:11px;">
+                    View Details
+                </button>
+            </td>
+        `;
+
+        tbody.appendChild(row);
+
+        // Attach events after DOM insert
+        setTimeout(() => {
+            const wrapper = document.getElementById(`tp-action-${p.plan_id}`);
+            if (!wrapper) return;
+
+            const detailsBtn = wrapper.querySelector(".btn-tp-details");
+            if (detailsBtn) {
+                detailsBtn.onclick = () => sendTravelAction("travel_plan_details");
+            }
+
+            if (isClaimable) {
+                const claimBtn = wrapper.querySelector(".btn-tp-claim");
+                if (claimBtn) {
+                    claimBtn.onclick = () => sendTravelAction("travel_plan_create_claim");
+                }
+            }
+        }, 50);
+    });
+
+    table.appendChild(tbody);
+    card.appendChild(table);
+    wrap.appendChild(card);
+    box.appendChild(wrap);
+    box.scrollTop = box.scrollHeight;
+}
+
+
+// render tada claims ===============================================
+
+
+
+function renderTadaClaims(data) {
+    const box = document.getElementById("chatMessages");
+    const wrap = document.createElement("div");
+    wrap.className = "msg bot";
+    wrap.style.padding = "0";
+
+    const card = document.createElement("div");
+    card.style.cssText = `
+        background: var(--bg);
+        border: 1px solid #2b3039;
+        border-radius: 12px;
+        padding: 18px 20px;
+        margin: 10px 0;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    `;
+
+    const tada = data.tada || {};
+    const summary = tada.summary || {};
+    const claims = tada.claims || [];
+
+    function formatDate(value) {
+        if (!value) return "N/A";
+        if (typeof value === "string") {
+            if (value.includes("T")) return value.split("T")[0];
+            return value;
+        }
+        return String(value);
+    }
+
+    card.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+            <div>
+                <h2 style="margin:0; color:#4ade80; font-size:18px;">🚕 TADA Claims</h2>
+                <div style="font-size:12px; color:#9ca3af; margin-top:4px;">
+                    Total: <b>${summary.total_claims || claims.length}</b> • 
+                    This page: <b>${summary.count || claims.length}</b>
+                </div>
+                <div style="font-size:12px; color:#9ca3af; margin-top:2px;">
+                    Page ${summary.page || 1} of ${summary.last_page || "?"}
+                </div>
+            </div>
+            <div style="text-align:right;">
+                <div style="padding:4px 10px; background:var(--card); border-radius:6px; font-size:12px; margin-bottom:4px;">
+                    Net Payable<br>
+                    <span style="font-weight:600; color:#facc15;">₹${summary.total_net_payable || "0.00"}</span>
+                </div>
+                <div style="padding:4px 10px; background:var(--card); border-radius:6px; font-size:11px;">
+                    Gross: ₹${summary.total_gross || "0.00"}
+                </div>
+            </div>
+        </div>
+
+        <div style="margin:12px 0 8px; font-weight:600; color:#a5b4fc;">Claim List</div>
+    `;
+
+    const table = document.createElement("table");
+    table.style.cssText = `
+        width:100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    `;
+
+    table.innerHTML = `
+        <thead>
+            <tr>
+                <th style="text-align:left;padding:8px; border-bottom:1px solid #333;">Claim</th>
+                <th style="text-align:left;padding:8px; border-bottom:1px solid #333;">Travel</th>
+                <th style="text-align:right;padding:8px; border-bottom:1px solid #333;">Amount</th>
+                <th style="text-align:right;padding:8px; border-bottom:1px solid #333;">Status / Action</th>
+            </tr>
+        </thead>
+    `;
+
+    const tbody = document.createElement("tbody");
+
+    claims.forEach(c => {
+        const row = document.createElement("tr");
+        const dateRange = `${formatDate(c.from_date)} → ${formatDate(c.to_date)}`;
+
+        const statusLower = (c.status || "").toLowerCase();
+        const isActionable =
+            statusLower.includes("requested") ||
+            statusLower.includes("processing") ||
+            statusLower.includes("review") ||
+            statusLower.includes("to requester");
+
+        // **BUTTON CLICK FUNCTION**
+        function sendAction(action) {
+            sendMessageToChatbot({
+                action,
+                claim_id: c.claim_id
+            });
+        }
+
+        row.innerHTML = `
+            <td style="padding:8px; vertical-align:top;">
+                <div style="font-weight:500;">${c.claim_id}</div>
+                ${c.claim_pdf_url ? `<a href="${c.claim_pdf_url}" target="_blank" style="font-size:11px; color:#60a5fa;">📄 View PDF</a>` : ""}
+            </td>
+            <td style="padding:8px; vertical-align:top;">
+                ${dateRange}
+                <div style="font-size:11px; color:#9ca3af; margin-top:4px;">
+                    ${c.employee_name} (${c.employee_id})
+                </div>
+            </td>
+            <td style="padding:8px; text-align:right; vertical-align:top;">
+                <div style="font-weight:600;">₹${c.amount}</div>
+                <div style="font-size:11px; color:#9ca3af;">Gross: ₹${c.gross_amount}</div>
+                <div style="font-size:11px; color:#fca5a5;">Deduction: ₹${c.deduction_amount}</div>
+            </td>
+            <td style="padding:8px; text-align:right; vertical-align:top;" id="action-${c.claim_id}">
+                ${
+                    isActionable
+                        ? `
+                        <button class="btn-approve" style="padding:4px 8px; margin-right:6px; background:#22c55e; color:#000; border:none; border-radius:6px; cursor:pointer;">
+                            Approve
+                        </button>
+                        <button class="btn-reject" style="padding:4px 8px; background:#ef4444; color:#000; border:none; border-radius:6px; cursor:pointer;">
+                            Reject
+                        </button>
+                        `
+                        : `
+                        <span style="font-size:12px; color:#9ca3af;">${c.status}</span>
+                        `
+                }
+            </td>
+        `;
+
+        tbody.appendChild(row);
+
+        if (isActionable) {
+            setTimeout(() => {
+                const wrapper = document.getElementById(`action-${c.claim_id}`);
+                wrapper.querySelector(".btn-approve").onclick = () => sendAction("tada_approve");
+                wrapper.querySelector(".btn-reject").onclick = () => sendAction("tada_reject");
+            }, 50);
+        }
+    });
+
+    table.appendChild(tbody);
+    card.appendChild(table);
+    wrap.appendChild(card);
+    box.appendChild(wrap);
+    box.scrollTop = box.scrollHeight;
+}
+
+function renderPrivacyPolicy(data) {
+  const box = document.getElementById("chatMessages");
+
+  // Heading
+  const heading = document.createElement("div");
+  heading.className = "msg bot";
+  heading.innerHTML = `<b>${data.reply || "Here is the privacy policy:"}</b>`;
+  box.appendChild(heading);
+
+  // List of sections
+  const policies = data.policies || [];   // tumhara JSON isi key me hai
+
+  policies.forEach(section => {
+    const card = document.createElement("div");
+    card.className = "gatepass-card";  // tumhari existing card styling reuse
+
+    card.innerHTML = `
+      <p><b>${section.pp_title || "Section"}</b></p>
+      <p style="white-space: pre-wrap; margin-top: 4px;">
+        ${section.pp_description || ""}
+      </p>
+    `;
+
+    box.appendChild(card);
+  });
+
+  if (!policies.length) {
+    const msg = document.createElement("div");
+    msg.className = "msg bot";
+    msg.textContent = "No privacy policy sections were found.";
+    box.appendChild(msg);
+  }
+
+  box.scrollTop = box.scrollHeight;
+}
+
+function searchHistory() {
+    let q = document.getElementById("historySearch").value.trim();
+    const listBox = document.getElementById("historyList");
+
+    if (q.length === 0) {
+        {% if is_logged_in %}
+        loadConversations();
+        {% endif %}
+
+        return;
+    }
+
+    fetch(`/api/chat/search/?q=${encodeURIComponent(q)}`)
+        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) return;
+
+            listBox.innerHTML = "";
+
+            if (res.results.length === 0) {
+                listBox.innerHTML = `<div style="padding:8px; color:var(--muted); font-size:12px;">No matching chats found</div>`;
+                return;
+            }
+
+            res.results.forEach(r => {
+                let item = document.createElement("div");
+                item.className = "history-item";
+                item.innerHTML = `
+                    <div style="font-weight:500; font-size:13px;">${r.title}</div>
+                    <div style="font-size:11px; color:var(--muted);">${r.matched_text}</div>
+                `;
+                item.onclick = async () => { await loadConversation(r.conversation_id); };
+                listBox.appendChild(item);
+            });
+        });
+}
+
+function renderLeaveCards(data) {
+    const box = document.getElementById("chatMessages");
+    const header = document.createElement("div");
+    header.className = "msg bot";
+    header.innerHTML = `<b>${data.reply}</b>`;
+    box.appendChild(header);
+
+    const groups = { Requested: [], Approved: [], Rejected: [] };
+    data.leaves.forEach(lv => {
+        const status = (lv.status_name || "Requested").toLowerCase();
+        if (status.includes("request")) groups.Requested.push(lv);
+        else if (status.includes("approve")) groups.Approved.push(lv);
+        else if (status.includes("reject")) groups.Rejected.push(lv);
+    });
+
+    function section(title, color, items) {
+        if (!items.length) return;
+        const sectionHeader = document.createElement("div");
+        sectionHeader.className = "msg bot";
+        sectionHeader.innerHTML = `<b style="color:${color}">${title}</b>`;
+        box.appendChild(sectionHeader);
+
+        items.forEach(lv => {
+            const card = document.createElement("div");
+            card.style.cssText = `background: var(--bg);border: 1px solid var(--border);border-radius: 12px;padding: 16px;margin: 12px 0;`;
+            card.innerHTML = `
+                <div style="font-size:16px; margin-bottom:6px; color:#93c5fd;"><b>${lv.emp_name}</b> — ${lv.leave_type}</div>
+                <div>📅 ${lv.start_date} → ${lv.end_date}</div>
+                <div>📝 Reason: ${lv.reason}</div>
+                <div style="margin-top:6px; font-weight:600; color:${color}">Status: ${lv.status_name}</div>
+                ${data.can_approve && lv.status_name.toLowerCase().includes("request") ? `
+                    <div style="margin-top:12px; display:flex; gap:10px;">
+                        <button class='btn approve' onclick="handleLeaveAction('${lv.leave_id}','${lv.emp_d_id}','${lv.module_id}','${lv.master_module_id}','approve')">Approve</button>
+                        <button class='btn reject' onclick="handleLeaveAction('${lv.leave_id}','${lv.emp_d_id}','${lv.module_id}','${lv.master_module_id}','reject')">Reject</button>
+                    </div>
+                ` : ""}
+            `;
+            box.appendChild(card);
+        });
+    }
+
+    section("🟡 Pending", "#facc15", groups.Requested);
+    section("🟢 Approved", "#4ade80", groups.Approved);
+    section("🔴 Rejected", "#f87171", groups.Rejected);
+    box.scrollTop = box.scrollHeight;
+}
+
+function renderGatepassCards(data) {
+    const box = document.getElementById("chatMessages");
+    const div = document.createElement("div");
+    div.className = "msg bot";
+    div.innerHTML = `<b>${data.reply}</b>`;
+    box.appendChild(div);
+
+    const groups = { Requested: [], Approved: [], Rejected: [] };
+    data.gatepasses.forEach(gp => {
+      const status = (gp.status_name || "Requested").toLowerCase();
+      if (status.includes("request")) groups.Requested.push(gp);
+      else if (status.includes("approve")) groups.Approved.push(gp);
+      else if (status.includes("reject")) groups.Rejected.push(gp);
+    });
+
+    const renderGroup = (title, items) => {
+      if (!items.length) return;
+      const header = document.createElement("div");
+      header.className = "msg bot";
+      header.innerHTML = `<b>${title}</b>`;
+      box.appendChild(header);
+      items.forEach(gp => {
+        const card = document.createElement("div");
+        card.className = "gatepass-card";
+        card.innerHTML = `
+          <p><b>${gp.emp_name}</b></p>
+          <p>${gp.out_time} → ${gp.in_time}</p>
+          <p>Reason: ${gp.reason} | Destination: ${gp.destination}</p>
+          <p><b>Status:</b> ${gp.status_name || '-'}</p>
+          ${(data.can_approve && (!gp.status_name || gp.status_name.toLowerCase().includes('request'))) ? `
+          <div>
+            <button class='btn approve' onclick="handleGatepassAction('${gp.id}','${gp.emp_d_id}','${gp.module_id}','${gp.master_module_id}','approve')">Approve</button>
+            <button class='btn reject' onclick="handleGatepassAction('${gp.id}','${gp.emp_d_id}','${gp.module_id}','${gp.master_module_id}','reject')">Reject</button>
+          </div>` : ``}
+        `;
+        box.appendChild(card);
+      });
+    };
+
+    renderGroup("Pending", groups.Requested);
+    renderGroup("Approved", groups.Approved);
+    renderGroup("Rejected", groups.Rejected);
+    box.scrollTop = box.scrollHeight;
+}
+
+function renderMissedCards(data) {
+    const box = document.getElementById("chatMessages");
+    const div = document.createElement("div");
+    div.className = "msg bot";
+    div.innerHTML = `<b>${data.reply}</b>`;
+    box.appendChild(div);
+
+    const groups = { Requested: [], Approved: [], Rejected: [] };
+    data.missed.forEach(mp => {
+      const status = (mp.status_name || "Requested").toLowerCase();
+      if (status.includes("request")) groups.Requested.push(mp);
+      else if (status.includes("approve")) groups.Approved.push(mp);
+      else if (status.includes("reject")) groups.Rejected.push(mp);
+    });
+
+    const renderGroup = (title, items) => {
+      if (!items.length) return;
+      const header = document.createElement("div");
+      header.className = "msg bot";
+      header.innerHTML = `<b>${title}</b>`;
+      box.appendChild(header);
+      items.forEach(mp => {
+        const card = document.createElement("div");
+        card.className = "gatepass-card";
+        card.innerHTML = `
+          <p><b>${mp.emp_name}</b></p>
+          <p>Date: ${mp.date}</p>
+          <p>Reason: ${mp.reason}</p>
+          <p><b>Status:</b> ${mp.status_name || '-'}</p>
+          ${(data.can_approve && (!mp.status_name || mp.status_name.toLowerCase().includes('request'))) ? `
+          <div>
+            <button class='btn approve' onclick="handleMissedAction('${mp.id}','${mp.emp_d_id}','${mp.module_id}','${mp.master_module_id}','approve')">Approve</button>
+            <button class='btn reject' onclick="handleMissedAction('${mp.id}','${mp.emp_d_id}','${mp.module_id}','${mp.master_module_id}','reject')">Reject</button>
+          </div>` : ``}
+        `;
+        box.appendChild(card);
+      });
+    };
+
+    renderGroup("Pending", groups.Requested);
+    renderGroup("Approved", groups.Approved);
+    renderGroup("Rejected", groups.Rejected);
+    box.scrollTop = box.scrollHeight;
+}
+
+function renderMyMissedCards(data) {
+    const box = document.getElementById("chatMessages");
+    const div = document.createElement("div");
+    div.className = "msg bot";
+    div.innerHTML = `<b>${data.reply}</b>`;
+    box.appendChild(div);
+
+    const groups = { Requested: [], Approved: [], Rejected: [] };
+    data.missed.forEach(mp => {
+      const status = (mp.status || "Requested").toLowerCase();
+      if (status.includes("request")) groups.Requested.push(mp);
+      else if (status.includes("approve")) groups.Approved.push(mp);
+      else if (status.includes("reject")) groups.Rejected.push(mp);
+    });
+
+    const renderGroup = (title, items) => {
+      if (!items.length) return;
+      const header = document.createElement("div");
+      header.className = "msg bot";
+      header.innerHTML = `<b>${title}</b>`;
+      box.appendChild(header);
+      items.forEach(mp => {
+      const card = document.createElement("div");
+      card.className = "gatepass-card";
+      card.innerHTML = `
+        <p><b>Date:</b> ${mp.date || "-"}</p>
+        <p><b>In:</b> ${mp.in_time || "-"} | <b>Out:</b> ${mp.out_time || "-"}</p>
+        <p><b>Reason:</b> ${mp.reason || "-"}</p>
+        <p><b>Status:</b> ${mp.status || "-"}</p>
+      `;
+      box.appendChild(card);
+      });
+    };
+
+    renderGroup("Pending", groups.Requested);
+    renderGroup("Approved", groups.Approved);
+    renderGroup("Rejected", groups.Rejected);
+    box.scrollTop = box.scrollHeight;
+}
+
+function renderMyLeaves(data) {
+    const box = document.getElementById("chatMessages");
+    const header = document.createElement("div");
+    header.className = "msg bot";
+    header.innerHTML = `<b>${data.reply}</b>`;
+    box.appendChild(header);
+
+    const groups = { Requested: [], Approved: [], Rejected: [] };
+    data.leaves.forEach(lv => {
+        const status = (lv.status_name || "Requested").toLowerCase();
+        if (status.includes("request")) groups.Requested.push(lv);
+        else if (status.includes("approve")) groups.Approved.push(lv);
+        else if (status.includes("reject")) groups.Rejected.push(lv);
+    });
+
+    function section(title, color, items) {
+        if (!items.length) return;
+        const head = document.createElement("div");
+        head.className = "msg bot";
+        head.innerHTML = `<b style="color:${color}">${title}</b>`;
+        box.appendChild(head);
+
+        items.forEach(lv => {
+            const card = document.createElement("div");
+            card.style.cssText = `background: var(--bg);border: 1px solid var(--border);border-radius: 12px;padding: 16px;margin: 12px 0;`;
+            card.innerHTML = `
+                <div style="font-size:15px; margin-bottom:6px; color:#a5b4fc;"><b>${lv.leave_type}</b></div>
+                <div>📅 ${lv.start_date} → ${lv.end_date}</div>
+                <div>📝 Reason: ${lv.reason || '-'}</div>
+                <div style="margin-top:6px; font-weight:600; color:${color}">Status: ${lv.status_name}</div>
+            `;
+            box.appendChild(card);
+        });
+    }
+
+    section("🟡 Pending", "#facc15", groups.Requested);
+    section("🟢 Approved", "#4ade80", groups.Approved);
+    section("🔴 Rejected", "#f87171", groups.Rejected);
+    box.scrollTop = box.scrollHeight;
+}
+
+function renderLeaveBalance(data) {
+    const box = document.getElementById("chatMessages");
+    const header = document.createElement("div");
+    header.className = "msg bot";
+    header.innerHTML = `<b>${data.reply}</b>`;
+    box.appendChild(header);
+
+    (data.balances || []).forEach(item => {
+        const card = document.createElement("div");
+        card.style.cssText = `background: var(--bg);border: 1px solid var(--border);border-radius: 12px;padding: 16px;margin: 12px 0;`;
+        card.innerHTML = `
+            <div style="font-size:16px; margin-bottom:8px; color:#93c5fd;"><b>📝 ${item.name}</b></div>
+            <div style="display:flex; justify-content:space-between; padding:8px 0;"><span>Allotted</span><b style="color:#4ade80">${item.total_allotted}</b></div>
+            <div style="display:flex; justify-content:space-between; padding:8px 0;"><span>Taken</span><b style="color:#f87171">${item.total_taken}</b></div>
+            <div style="display:flex; justify-content:space-between; padding:8px 0;"><span>Remaining</span><b style="color:#a78bfa">${item.total_balance}</b></div>
+            ${item.carried_forward ? `<div style="margin-top:6px; color:#38bdf8; font-size:13px;">Carried Forward: <b>${item.carried_forward}</b></div>` : ""}
+        `;
+        box.appendChild(card);
+    });
+    box.scrollTop = box.scrollHeight;
+}
+
+function renderPayslip(data) {
+    const box = document.getElementById("chatMessages");
+    const wrap = document.createElement("div");
+    wrap.className = "msg bot";
+    wrap.style.padding = "0";
+
+    const card = document.createElement("div");
+    card.style.cssText = `background: var(--bg);border: 1px solid #2b3039;border-radius: 12px;padding: 18px 20px;margin: 10px 0;box-shadow: 0 4px 12px rgba(0,0,0,0.25);`;
+
+    const payslip = data.payslip || {};
+    card.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2 style="margin:0; color:#4ade80; font-size:18px;">💰 Payslip — ${payslip.month_year || "N/A"}</h2>
+            <span style="padding:4px 10px; background:var(--card); border-radius:6px; font-size:12px;">${payslip.emp_name || "N/A"}</span>
+        </div>
+        
+        <div style="font-size:15px; margin-bottom:8px;"><b>Net Salary:</b> <span style="color:#4ade80; font-weight:600;">₹${payslip.net_salary || "0"}</span></div>
+        <div style="margin:12px 0 8px; font-weight:600; color:#a5b4fc;">Salary Breakdown</div>
+    `;
+
+    const table = document.createElement("table");
+    table.style.cssText = `width:100%;border-collapse: collapse;font-size: 14px;`;
+    table.innerHTML = `
+        <thead><tr>
+            <th style="text-align:left;padding:8px; border-bottom:1px solid #333;">Component</th>
+            <th style="text-align:right;padding:8px; border-bottom:1px solid #333;">Amount</th>
+        </tr></thead>
+    `;
+
+    const tbody = document.createElement("tbody");
+    (payslip.components || []).forEach(c => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td style="padding:8px;">${c.name}</td>
+            <td style="padding:8px;text-align:right; font-weight:500;">₹${c.amount}</td>
+        `;
+        tbody.appendChild(row);
+    });
+
+    table.appendChild(tbody);
+    card.appendChild(table);
+    wrap.appendChild(card);
+    box.appendChild(wrap);
+    box.scrollTop = box.scrollHeight;
+}
+
+function renderHolidayList(data) {
+    const box = document.getElementById("chatMessages");
+    const header = document.createElement("div");
+    header.className = "msg bot";
+    header.innerHTML = `<b>${data.reply}</b>`;
+    box.appendChild(header);
+
+    if (!data.holidays || data.holidays.length === 0) {
+        const empty = document.createElement("div");
+        empty.style.cssText = `background: var(--bg);border: 1px solid var(--border);border-radius: 12px;padding: 16px;margin: 12px 0;text-align: center;`;
+        empty.innerHTML = `<b>No holidays found.</b>`;
+        box.appendChild(empty);
+        return;
+    }
+
+    data.holidays.forEach(h => {
+        const card = document.createElement("div");
+        card.style.cssText = `background: var(--bg);border: 1px solid var(--border);border-radius: 12px;padding: 18px;margin: 12px 0;`;
+        card.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0; font-size:17px; color:#93c5fd;">🎉 ${h.name}</h3>
+                <span style="background:#2a3342;padding:4px 10px;border-radius:6px;font-size:12px;color:#a5b4fc;">${h.month} (${h.month_number})</span>
+            </div>
+            <hr style="border-color:#333; margin:12px 0;">
+            <div style="display:flex; justify-content:space-between; font-size:15px;"><span>📅 Start:</span><b style="color:#4ade80">${h.start_date}</b></div>
+            <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:15px;"><span>📆 End:</span><b style="color:#facc15">${h.end_date}</b></div>
+        `;
+        box.appendChild(card);
+    });
+    box.scrollTop = box.scrollHeight;
+}
+
+async function handleLeaveAction(id, empDid, module_id, master_module_id, action) {
+    const cmd = `${action} leave|${id}|${empDid}|${module_id}|${master_module_id}|ok`;
+    await sendMsg(cmd);
+    setTimeout(() => sendMsg("pending leave list"), 1000);
+}
+
+async function handleGatepassAction(id, empDid, module_id, master_module_id, action) {
+    const cmd = `${action} gatepass|${id}|${empDid}|${module_id}|${master_module_id}|ok`;
+    await sendMsg(cmd);
+    setTimeout(() => sendMsg("pending gatepass list"), 1000);
+}
+
+async function handleMissedAction(id, empDid, module_id, master_module_id, action) {
+    const cmd = `${action} missed|${id}|${empDid}|${module_id}|${master_module_id}|ok`;
+    await sendMsg(cmd);
+    setTimeout(() => sendMsg("pending missed punch list"), 1000);
+}
+
+// CONVERSATION MANAGEMENT
+async function loadConversations() {
+    try {
+        const resp = await fetch("/api/conversations/");
+        const data = await resp.json();
+        if (data.ok && data.conversations && data.conversations.length > 0) {
+            renderConversations(data.conversations);
+        } else {
+            document.getElementById("historyList").innerHTML = "<div style='text-align:center; color:var(--muted); padding:20px; font-size:13px;'>No chats yet<br>Start a new conversation!</div>";
+        }
+    } catch (error) {
+        console.error("❌ Failed to load conversations:", error);
+        document.getElementById("historyList").innerHTML = "<div style='text-align:center; color:var(--reject); padding:20px;'>Failed to load</div>";
+    }
+}
+
+function renderConversations(conversations) {
+    const historyList = document.getElementById("historyList");
+    historyList.innerHTML = "";
+
+    conversations.slice(0, 30).forEach(conv => {  // max 30 show
+        const item = document.createElement("div");
+        item.className = "history-item";
+        item.title = conv.title || "Untitled Chat";   // ⭐ Tooltip enable
+
+        item.innerHTML = `
+            <svg class="icon-svg" viewBox="0 0 24 24">
+                <path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
+            </svg>
+            <div class="text-content">
+                <div class="title">${conv.title?.substring(0, 30) || "New Chat"}${conv.title?.length > 30 ? "..." : ""}</div>
+                <div class="time">${formatTime(conv.timestamp)}</div>
+            </div>
+            <button class="delete-btn" title="Delete chat">
+              <svg class="icon-svg" viewBox="0 0 24 24">
+                  <path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+              </svg>
+          </button>
+
+        `;
+        document.getElementById("chatCount").innerText = conversations.length;
+
+
+        // Active state
+        if (currentConversationId === conv.id) {
+            item.classList.add("active");
+        }
+
+        // Hover effects
+        item.onmouseenter = () => {
+            item.querySelector(".delete-btn").style.opacity = "1";
+        };
+        item.onmouseleave = () => {
+            item.querySelector(".delete-btn").style.opacity = "0";
+        };
+
+        item.onclick = (e) => {
+            if (!e.target.closest(".delete-btn")) {
+                loadConversation(conv.id);
+            }
+        };
+
+        item.querySelector(".delete-btn").onclick = (e) => {
+            e.stopPropagation();
+            if (confirm("Delete this chat?")) {
+                deleteConversation(conv.id);
+            }
+        };
+
+        historyList.appendChild(item);
+    });
+}
+
+document.getElementById("sidebarToggle").onclick = () => {
+    const sidebar = document.querySelector(".sidebar");
+    sidebar.classList.toggle("mini");
+
+    if (sidebar.classList.contains("mini")) {
+        document.getElementById("chatCounterBox").style.display = "flex";
+    } else {
+        document.getElementById("chatCounterBox").style.display = "none";
+    }
+};
+
+
+async function loadConversation(convId) {
+    try {
+        const resp = await fetch("/api/conversations/load/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ conversation_id: convId })
+        });
+        
+        const data = await resp.json();
+        
+        if (data.ok && data.conversation) {
+            currentConversationId = convId;
+            currentMessages = data.conversation.messages || [];
+            
+            const chatBox = document.getElementById("chatMessages");
+            chatBox.innerHTML = "";
+            
+            currentMessages.forEach(msg => {
+                if (msg.role === "bot" && msg.data && msg.data.reply_type) {
+                    switch (msg.data.reply_type) {
+                        case "payslip": renderPayslip(msg.data); break;
+                        case "leave_cards": renderLeaveCards(msg.data); break;
+                        case "gatepass_cards": renderGatepassCards(msg.data); break;
+                        case "my_leaves": renderMyLeaves(msg.data); break;
+                        case "leave_balance": renderLeaveBalance(msg.data); break;
+                        case "attendance": renderAttendance(msg.data); break;
+                        case "holiday_list": renderHolidayList(msg.data); break;
+                        case "privacy_policy":   renderPrivacyPolicy(msg.data); break;
+                        case "tada_claims": renderTadaClaims(msg.data); break;
+                        case "travel_plans": renderTravelPlans(msg.data); break;
+
+                        default: appendMessage("bot", msg.text);
+                    }
+                } else {
+                    appendMessage(msg.role, msg.text);
+                }
+            });
+        }
+    } catch (error) {
+        console.error("❌ Failed to load conversation:", error);
+    }
+}
+
+async function saveCurrentConversation() {
+    if (currentMessages.length === 0) return;
+    
+    try {
+        const resp = await fetch("/api/conversations/save/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                conversation_id: currentConversationId,
+                messages: currentMessages
+            })
+        });
+        
+        const data = await resp.json();
+        
+        if (data.ok) {
+            currentConversationId = data.conversation_id;
+            console.log("✅ Conversation saved:", currentConversationId);
+            {% if is_logged_in %}
+            loadConversations();
+            {% endif %}
+
+        }
+    } catch (error) {
+        console.error("❌ Failed to save conversation:", error);
+    }
+}
+
+async function deleteConversation(convId) {
+    try {
+        await fetch("/api/conversations/delete/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ conversation_id: convId })
+        });
+        
+        if (currentConversationId === convId) {
+            currentConversationId = null;
+            currentMessages = [];
+            document.getElementById("chatMessages").innerHTML = "";
+        }
+        {% if is_logged_in %}
+        loadConversations();
+        {% endif %}
+
+    } catch (error) {
+        console.error("❌ Failed to delete conversation:", error);
+    }
+}
+
+function startNewChat() {
+    currentConversationId = null;
+    currentMessages = [];
+    document.getElementById("chatMessages").innerHTML = "";
+    {% if is_logged_in %}
+    loadConversations();
+    {% endif %}
+
+}
+// Sidebar Open/Close Toggle
+
+
+
+function formatTime(timestamp) {
+    if (!timestamp) return "";
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = now - date;
+    if (diff < 3600000) {
+        const mins = Math.floor(diff / 60000);
+        return mins < 1 ? "Just now" : `${mins}m ago`;
+    }
+    if (diff < 86400000) {
+        const hours = Math.floor(diff / 3600000);
+        return `${hours}h ago`;
+    }
+    if (diff < 604800000) {
+        const days = Math.floor(diff / 86400000);
+        return `${days}d ago`;
+    }
+    return date.toLocaleDateString();
+}
+
+// INITIALIZE
+  document.addEventListener("DOMContentLoaded", () => {
+      const sendBtn = document.getElementById("sendBtn");
+      const msgInput = document.getElementById("msgInput");
+
+      sendBtn.addEventListener("click", () => sendMsg());
+      msgInput.addEventListener("keypress", e => {
+          if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              sendMsg();
+          }
+      });
+
+      document.getElementById("newChatBtn").onclick = () => {
+    startNewChat();
+    const chatBox = document.getElementById("chatMessages");
+
+    chatBox.innerHTML = "";
+
+    const welcome = document.createElement("div");
+    welcome.id = "welcomeBox";
+    welcome.style.cssText = `
+        margin: 80px auto;
+        max-width: 500px;
+        text-align: center;
+        padding: 40px 30px;
+        background: linear-gradient(135deg, #1a1c25, #1f2633);
+        border-radius: 28px;
+        border: 1px solid #2d3748;
+        box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+    `;
+    welcome.innerHTML = `
+        <img src="https://t3.ftcdn.net/jpg/05/73/14/38/360_F_573143889_NVvKlj8AGINKQyT7Pr3tkvCScXShff0F.jpg"
+             style="width:220px;height:220px;border-radius:50%;border:6px solid #10a37f;">
+        
+        <br><br>
+
+        <button style="
+            background:#10a37f;
+            color:#fff;
+            padding:12px 26px;
+            font-size:18px;
+            border-radius:50px;
+            border:none;
+            margin-bottom:18px;
+            cursor:default;
+        ">Hi! I'm FixGPT</button>
+
+        <h2 style="color:#e5e7eb;">Welcome to <span style="color:#10a37f;">FixGPT.ai</span></h2>
+        <p style="color:#94a3b8;">Your assistant for attendance, leaves, payslips & more.</p>
+    `;
+
+    chatBox.appendChild(welcome);
+
+    document.querySelector(".chat-input").classList.remove("chat-input-normal");
+    // ⭐ Move the input to center
+    document.querySelector(".chat-input").classList.add("centered-input");
+
+    // Position input box just below welcome card dynamically
+    setTimeout(() => {
+        const welcomeBox = document.getElementById("welcomeBox");
+        const inputBox = document.querySelector(".chat-input");
+
+        if (welcomeBox) {
+            const rect = welcomeBox.getBoundingClientRect();
+            inputBox.style.top = (rect.bottom + 40) + "px"; // 40px gap
+        }
+    }, 50);
+
+};
+
+
+    {% if is_logged_in %}
+  loadConversations();
+  {% endif %}
+
+});
+</script>
+
+</body>
+</html>
