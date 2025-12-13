@@ -8,8 +8,8 @@ from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.views.decorators.http import require_POST, require_http_methods, require_GET, require_POST
 from collections import defaultdict
 # Core imports for intent classification and response generation
-from core.model_inference2 import model_response
-from core.phi3_inference_v3 import intent_model_call
+# from core.model_inference2 import model_response
+# from core.phi3_inference_v3 import intent_model_call
 from django.conf import settings
 from core.extract_date_time import extract_datetime_info
 from django.utils import timezone
@@ -3194,263 +3194,265 @@ def chat_api(request):
 
     print("💬 User Message:", msg)
 
-    # -------------------------------
-    # 🧠 INTENT CLASSIFICATION
-    # -------------------------------
-    # classification = classify_message(msg)
-    # intent = classification.get("intent") or "general"
+#     # -------------------------------
+#     # 🧠 INTENT CLASSIFICATION
+#     # -------------------------------
+#     # classification = classify_message(msg)
+#     # intent = classification.get("intent") or "general"
 
-    # -------------------------------
-    # 🔥 Guest User Restriction Logic
-    # -------------------------------
-    if not is_logged_in:
-        if intent != "general":  
-            return JsonResponse({
-                "reply": "⚠️ Please login to access HR features like leave, attendance, payslip, gatepass & approvals.",
-                "reply_type": "text_only"
-            })
+#     # -------------------------------
+#     # 🔥 Guest User Restriction Logic
+#     # -------------------------------
+#     if not is_logged_in:
+#         if intent != "general":  
+#             return JsonResponse({
+#                 "reply": "⚠️ Please login to access HR features like leave, attendance, payslip, gatepass & approvals.",
+#                 "reply_type": "text_only"
+#             })
 
     
-    # 1) Classify intent using phi3_inference_v3
-    classification = classify_message(msg)
-    print(f"classification =============== : {classification}")
-    intent = classification.get("intent") or "general"
-    # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-    reason = classification.get("reason") or "other"
-    destination = classification.get("destination") or "local"
-    leave_category = classification.get("leave_category") or "unpaid leave"
-    print(f"%%%%%%%%%%%%%%%%%%%%%%%%% {reason}, {destination}, {leave_category}")
-    # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-    lang = classification.get("language", "en")
-    confidence = classification.get("confidence", 0.0)
+#     # 1) Classify intent using phi3_inference_v3
+#     classification = classify_message(msg)
+#     print(f"classification =============== : {classification}")
+#     intent = classification.get("intent") or "general"
+#     # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+#     reason = classification.get("reason") or "other"
+#     destination = classification.get("destination") or "local"
+#     leave_category = classification.get("leave_category") or "unpaid leave"
+#     print(f"%%%%%%%%%%%%%%%%%%%%%%%%% {reason}, {destination}, {leave_category}")
+#     # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+#     lang = classification.get("language", "en")
+#     confidence = classification.get("confidence", 0.0)
     
-    print("🤖 Phi-3 Intent →", classification)
+#     print("🤖 Phi-3 Intent →", classification)
     
-    # 2) If general intent, use model_inference2.py for response
-    if intent == "general":
-        reply = model_response(msg) or handle_general_chat(msg, lang)
-        return JsonResponse({
-            "reply": reply,
-            "intent": intent,
-            "confidence": confidence,
-            "datetime_info": None,
-        })
+#     # 2) If general intent, use model_inference2.py for response
+#     if intent == "general":
+#         reply = model_response(msg) or handle_general_chat(msg, lang)
+#         return JsonResponse({
+#             "reply": reply,
+#             "intent": intent,
+#             "confidence": confidence,
+#             "datetime_info": None,
+#         })
     
-    # 3) Extract datetime info using extract_date_time.py
-    datetime_info = extract_datetime_info(msg)
-    decision = build_decision_context(msg, classification, datetime_info)
-    task = decision.get("task") or "general"
-    lang = decision.get("language", lang)
+#     # 3) Extract datetime info using extract_date_time.py
+#     datetime_info = extract_datetime_info(msg)
+#     decision = build_decision_context(msg, classification, datetime_info)
+#     task = decision.get("task") or "general"
+#     lang = decision.get("language", lang)
     
-    print("📅 DateTime Extract →", datetime_info)
+#     print("📅 DateTime Extract →", datetime_info)
     
-    # 4) Continuation mode: reuse previous slots if user says "also", "again", etc.
-    if any(w in msg.lower() for w in ["bhi", "also", "same", "phir", "again", "next day", "uske baad"]):
-        if chat_memory.get("date"):
-            decision["date"] = chat_memory["date"]
-        if chat_memory.get("leave_type"):
-            decision["leave_type"] = chat_memory["leave_type"]
-        if chat_memory.get("reason"):
-            decision["reason"] = chat_memory["reason"]
+#     # 4) Continuation mode: reuse previous slots if user says "also", "again", etc.
+#     if any(w in msg.lower() for w in ["bhi", "also", "same", "phir", "again", "next day", "uske baad"]):
+#         if chat_memory.get("date"):
+#             decision["date"] = chat_memory["date"]
+#         if chat_memory.get("leave_type"):
+#             decision["leave_type"] = chat_memory["leave_type"]
+#         if chat_memory.get("reason"):
+#             decision["reason"] = chat_memory["reason"]
     
-    meta = {
-        "intent": task,
-        "confidence": confidence,
-        "datetime_info": datetime_info,
-    }
+#     meta = {
+#         "intent": task,
+#         "confidence": confidence,
+#         "datetime_info": datetime_info,
+#     }
     
-    # 5) Handle approval commands (high priority) - use handle_leave_approval=======================================================
-    raw_msg = msg.lower().strip()
-    if raw_msg.startswith("approve leave") or raw_msg.startswith("reject leave"):
-        result = handle_leave_approval(msg, token)
-        if isinstance(result, JsonResponse):
-            return result
-        return JsonResponse({"reply": result})
+#     # 5) Handle approval commands (high priority) - use handle_leave_approval=======================================================
+#     raw_msg = msg.lower().strip()
+#     if raw_msg.startswith("approve leave") or raw_msg.startswith("reject leave"):
+#         result = handle_leave_approval(msg, token)
+#         if isinstance(result, JsonResponse):
+#             return result
+#         return JsonResponse({"reply": result})
     
-    if raw_msg.startswith("approve gatepass") or raw_msg.startswith("reject gatepass"):
-        result = handle_gatepass_approval(msg, token)
-        return JsonResponse({"reply": result})
+#     if raw_msg.startswith("approve gatepass") or raw_msg.startswith("reject gatepass"):
+#         result = handle_gatepass_approval(msg, token)
+#         return JsonResponse({"reply": result})
     
-    if raw_msg.startswith("approve missed") or raw_msg.startswith("reject missed"):
-        result = handle_missed_approval(msg, token)
-        return JsonResponse({"reply": result})
+#     if raw_msg.startswith("approve missed") or raw_msg.startswith("reject missed"):
+#         result = handle_missed_approval(msg, token)
+#         return JsonResponse({"reply": result})
     
-    if raw_msg.startswith("approve travel_request") or raw_msg.startswith("reject travel_request"):
-        result = handle_travel_request_approval(msg, token)
-        return JsonResponse({"reply": result})
+#     if raw_msg.startswith("approve travel_request") or raw_msg.startswith("reject travel_request"):
+#         result = handle_travel_request_approval(msg, token)
+#         return JsonResponse({"reply": result})
     
 
-    if raw_msg.startswith("approve tada_claim") or raw_msg.startswith("reject tada_claim"):
-        result = handle_tada_claim_approval(msg, token)
-        return JsonResponse({"reply": result})
+#     if raw_msg.startswith("approve tada_claim") or raw_msg.startswith("reject tada_claim"):
+#         result = handle_tada_claim_approval(msg, token)
+#         return JsonResponse({"reply": result})
 
-    # 6) Handle specific tasks using existing handlers
+#     # 6) Handle specific tasks using existing handlers
 
         
-    if task == "create_tada":
-        custom_prompt = """Extract the following fields from the user message:
+#     if task == "create_tada":
+#         custom_prompt = """Extract the following fields from the user message:
 
-- trip_name
-- destination
-- purpose
-- remark
+# - trip_name
+# - destination
+# - purpose
+# - remark
 
-Rules:
-1. Output ONLY a valid JSON object.
-2. If a field is missing, return it as an empty string "".
-3. Do not add explanations or extra text.
-4. Detect fields only based on user's text.
+# Rules:
+# 1. Output ONLY a valid JSON object.
+# 2. If a field is missing, return it as an empty string "".
+# 3. Do not add explanations or extra text.
+# 4. Detect fields only based on user's text.
 
-Output JSON format:
-{
-  "trip_name": "",
-  "destination": "",
-  "purpose": "",
-  "remark": ""
-}
-"""
+# Output JSON format:
+# {
+#   "trip_name": "",
+#   "destination": "",
+#   "purpose": "",
+#   "remark": ""
+# }
+# """
         
-        intent, confidence, reason, destination, leave_category, trip_name, purpose, remark = intent_model_call(msg, custom_prompt)
-        print(f"time: ---- {datetime_info}")
-        dt_info = datetime_info
-        date_str = dt_info.get("start_date")
-        end_date_str = dt_info.get("end_date")
-        out_time_str = dt_info.get("start_time")
-        in_time_str = dt_info.get("end_time")
-        print("=" * 50)
-        print("destination:--- ", destination)
-        print("trip name:---- ", trip_name)
-        print("purpose:---- ", purpose)
-        print("remark: -----", remark)
+#         intent, confidence, reason, destination, leave_category, trip_name, purpose, remark = intent_model_call(msg, custom_prompt)
+#         print(f"time: ---- {datetime_info}")
+#         dt_info = datetime_info
+#         date_str = dt_info.get("start_date")
+#         end_date_str = dt_info.get("end_date")
+#         out_time_str = dt_info.get("start_time")
+#         in_time_str = dt_info.get("end_time")
+#         print("=" * 50)
+#         print("destination:--- ", destination)
+#         print("trip name:---- ", trip_name)
+#         print("purpose:---- ", purpose)
+#         print("remark: -----", remark)
 
-        return JsonResponse({
-            "reply_type": "create_tada_request",
-            "suggested": {
-                "trp_name": trip_name ,
-                "trp_destination": destination,
-                "trp_start_date": date_str,
-                "trp_end_date": end_date_str,
-                "trp_start_time": out_time_str,
-                "trp_end_time": in_time_str,
-                "trp_advance": "0.0",
-                "trp_purpose": "37",
-                "trp_travel_type_id": "2",
-                "trp_remarks": remark
-            }
-        })
+#         return JsonResponse({
+#             "reply_type": "create_tada_request",
+#             "suggested": {
+#                 "trp_name": trip_name ,
+#                 "trp_destination": destination,
+#                 "trp_start_date": date_str,
+#                 "trp_end_date": end_date_str,
+#                 "trp_start_time": out_time_str,
+#                 "trp_end_time": in_time_str,
+#                 "trp_advance": "0.0",
+#                 "trp_purpose": "37",
+#                 "trp_travel_type_id": "2",
+#                 "trp_remarks": remark
+#             }
+#         })
         
-    elif task == "tada_claim_list":
-        data = handle_tada_claims(token, status_filter=None, page=1, limit=20)
-        return JsonResponse(data, safe=False)
+#     elif task == "tada_claim_list":
+#         data = handle_tada_claims(token, status_filter=None, page=1, limit=20)
+#         return JsonResponse(data, safe=False)
 
     
-    elif task == "tada_request_list":
-        data = handle_travel_requests(token, status_filter=None, page=1, limit=20)
-        return JsonResponse(data, safe=False)
+#     elif task == "tada_request_list":
+#         data = handle_travel_requests(token, status_filter=None, page=1, limit=20)
+#         return JsonResponse(data, safe=False)
 
-    elif task == "apply_leave":
-        print("entering apply leave")
-        result = handle_apply_leave(reason, leave_category, msg, token, datetime_info=datetime_info)
-        if isinstance(result, JsonResponse):
-            return result
+#     elif task == "apply_leave":
+#         print("entering apply leave")
+#         result = handle_apply_leave(reason, leave_category, msg, token, datetime_info=datetime_info)
+#         if isinstance(result, JsonResponse):
+#             return result
         
-        # Save to memory
-        SESSION_MEMORY[user_id] = {
-            "date": datetime_info.get("start_date", ""),
-            "leave_type": decision.get("leave_type", "full"),
-            "reason": decision.get("reason", "")
-        }
+#         # Save to memory
+#         SESSION_MEMORY[user_id] = {
+#             "date": datetime_info.get("start_date", ""),
+#             "leave_type": decision.get("leave_type", "full"),
+#             "reason": decision.get("reason", "")
+#         }
         
-        payload = {"reply": result}
-        payload.update(meta)
-        return JsonResponse(payload)
+#         payload = {"reply": result}
+#         payload.update(meta)
+#         return JsonResponse(payload)
     
-    elif task == "leave_list" or task == "pending_leave":
-        return handle_pending_leaves(token, request.session.get("role_name"))
+#     elif task == "leave_list" or task == "pending_leave":
+#         return handle_pending_leaves(token, request.session.get("role_name"))
     
-    elif task == "apply_gatepass":
-        print("entering apply gatepass")
-        result = handle_apply_gatepass(reason, destination, msg, token, datetime_info=datetime_info)
-        if isinstance(result, JsonResponse):
-            return result
+#     elif task == "apply_gatepass":
+#         print("entering apply gatepass")
+#         result = handle_apply_gatepass(reason, destination, msg, token, datetime_info=datetime_info)
+#         if isinstance(result, JsonResponse):
+#             return result
         
-        payload = {"reply": result}
-        payload.update(meta)
-        return JsonResponse(payload)
+#         payload = {"reply": result}
+#         payload.update(meta)
+#         return JsonResponse(payload)
     
-    elif task == "pending_gatepass" or task == "gatepass_list":
-        return handle_pending_gatepass(token, request.session.get("role_name"))
+#     elif task == "pending_gatepass" or task == "gatepass_list":
+#         return handle_pending_gatepass(token, request.session.get("role_name"))
     
-    elif task == "apply_missed_punch" or task == "apply_miss_punch":
-        print("entering apply missed punch")
-        result = handle_apply_missed_punch(msg, token, datetime_info=datetime_info)
-        if isinstance(result, JsonResponse):
-            return result
+#     elif task == "apply_missed_punch" or task == "apply_miss_punch":
+#         print("entering apply missed punch")
+#         result = handle_apply_missed_punch(msg, token, datetime_info=datetime_info)
+#         if isinstance(result, JsonResponse):
+#             return result
         
-        payload = {"reply": result}
-        payload.update(meta)
-        return JsonResponse(payload)
+#         payload = {"reply": result}
+#         payload.update(meta)
+#         return JsonResponse(payload)
     
-    elif task == "pending_missed_punch" or task == "pending_miss_punch" or task == "misspunch_list":
-        return handle_pending_missed_punch(token, request.session.get("role_name"))
+#     elif task == "pending_missed_punch" or task == "pending_miss_punch" or task == "misspunch_list":
+#         return handle_pending_missed_punch(token, request.session.get("role_name"))
     
-    elif task == "my_missed_punch" or task == "my_miss_punch":
-        return handle_my_missed_punch(token)
+#     elif task == "my_missed_punch" or task == "my_miss_punch":
+#         return handle_my_missed_punch(token)
     
-    elif task == "leave_balance":
-        response = handle_leave_balance(token)
-        if isinstance(response, JsonResponse):
-            return response
-        payload = {"reply": response}
-        payload.update(meta)
-        return JsonResponse(payload)
+#     elif task == "leave_balance":
+#         response = handle_leave_balance(token)
+#         if isinstance(response, JsonResponse):
+#             return response
+#         payload = {"reply": response}
+#         payload.update(meta)
+#         return JsonResponse(payload)
     
-    elif task == "attendance_report":
-        return handle_attendance_report(decision, token, request, msg)
-    elif task == "leave_balance":
-        result = handle_leave_balance(token)
-        return result   
-    elif task == "my_leaves":
-        return handle_my_leaves(token, request.session.get("employee_id"))
-    elif task == "my_missed_punch":
-        return handle_my_missed_punch(token)
-    elif task == "privacy_policy":
-        # return handle_privacy_policy(token)
-        data = handle_privacy_policy(token)
-        return JsonResponse(data, safe=False)
-    elif task == "payslip":
-        # return handle_payslip_policy(token)
-        data = handle_payslip_policy(token)
-        return JsonResponse(data, safe=False)
-    elif task == "holiday_list":
-        holidays = fetch_holidays({"authorization": f"Bearer {token}"})
-        return JsonResponse({
-            "reply_type": "holiday_list",
-            "reply": "📅 Upcoming Holidays",
-            "holidays": holidays
-        })
+#     elif task == "attendance_report":
+#         return handle_attendance_report(decision, token, request, msg)
+#     elif task == "leave_balance":
+#         result = handle_leave_balance(token)
+#         return result   
+#     elif task == "my_leaves":
+#         return handle_my_leaves(token, request.session.get("employee_id"))
+#     elif task == "my_missed_punch":
+#         return handle_my_missed_punch(token)
+#     elif task == "privacy_policy":
+#         # return handle_privacy_policy(token)
+#         data = handle_privacy_policy(token)
+#         return JsonResponse(data, safe=False)
+#     elif task == "payslip":
+#         # return handle_payslip_policy(token)
+#         data = handle_payslip_policy(token)
+#         return JsonResponse(data, safe=False)
+#     elif task == "holiday_list":
+#         holidays = fetch_holidays({"authorization": f"Bearer {token}"})
+#         return JsonResponse({
+#             "reply_type": "holiday_list",
+#             "reply": "📅 Upcoming Holidays",
+#             "holidays": holidays
+#         })
         
-# Fallback to general model response
-    fallback_reply = model_response(msg) or handle_general_chat(msg, lang)
-    payload = {"reply": fallback_reply}
-    payload.update(meta)
+# # Fallback to general model response
+#     fallback_reply = model_response(msg) or handle_general_chat(msg, lang)
+#     payload = {"reply": fallback_reply}
+#     payload.update(meta)
    
-    return JsonResponse(payload)
-    # return JsonResponse({
-    #     "reply_type": "create_tada_request",
-    #     "suggested": {
-    #         "trp_name": "Client Visit",
-    #         "trp_destination": "Delhi",
-    #         "trp_start_date": "2025-12-17",
-    #         "trp_end_date": "2025-12-17",
-    #         "trp_start_time": "10:00",
-    #         "trp_end_time": "18:00",
-    #         "trp_advance": "0.0",
-    #         "trp_purpose": "37",
-    #         "trp_travel_type_id": "2",
-    #         "trp_remarks": "Short day trip"
-    #     }
-    # })
+#     return JsonResponse(payload)
+
+
+    return JsonResponse({
+        "reply_type": "create_tada_request",
+        "suggested": {
+            "trp_name": "Client Visit",
+            "trp_destination": "Delhi",
+            "trp_start_date": "2025-12-17",
+            "trp_end_date": "2025-12-17",
+            "trp_start_time": "10:00",
+            "trp_end_time": "18:00",
+            "trp_advance": "0.0",
+            "trp_purpose": "37",
+            "trp_travel_type_id": "2",
+            "trp_remarks": "Short day trip"
+        }
+    })
 
 
 
