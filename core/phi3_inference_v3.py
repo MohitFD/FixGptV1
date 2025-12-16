@@ -55,16 +55,21 @@ C. GATE PASS:
 - "reject_gatepass" → reject gate pass (e.g., "reject gate pass")
 
 D. TADA (Travel Allowance & Daily Allowance):
-- "create_tada" → user wants to create a new TADA request (e.g., "create TADA", "make a travel request", "apply TADA", 
-    "I want to create a TADA request", "generate travel request",
-    "Ek trip banana hai yaar—trip name ‘Office Visit’, destination Mumbai rakh do, 
+- "create_tada_outstation" → user wants to create a new outstation TADA request (e.g., "create TADA outstation", "make a travel request outstation",
+    "I want to create a TADA outstation request", "Ek trip banana hai yaar—trip name ‘Office Visit’, destination Mumbai rakh do, 
     purpose Visit aur remark me likh dena ‘Manager se meeting hai’")
+- "create_tada_local" → user wants to create a new TADA local request (e.g., "create TADA local", "make a local travel request", "apply TADA local", 
+    "I want to create a TADA local request", "generate local travel request")
 
 E. TADA APPROVAL LIST:
 - "tada_claim_list" → user wants to see TADA claim approval list
 - "tada_request_list" → user wants to see TADA request approval list
 
-F. OTHER:
+F. COMPOFF APPROVAL LIST:
+- "compoff_list" → user wants to see CompOff request list
+- "pending_compoff" → user wants to see pending CompOff approval list
+
+G. OTHER:
 - "payslip" → user wants payslip (e.g., "show payslip", "download salary slip")
 - "holiday_list" → holidays (e.g., "show holidays", "holiday calendar")
 - "privacy_policy" → privacy policy (e.g., "privacy policy", "data policy")

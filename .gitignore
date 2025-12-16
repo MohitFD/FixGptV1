@@ -7,6 +7,5 @@ core/merged_phi3_intent/
 core/new_model/
 bc_v3_0.py
 model/
-fixhr_model/
-fixhr_gpt_local/
-dataset/
+
+
