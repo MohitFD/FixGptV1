@@ -594,5 +594,205 @@
   {
     "user": "what is fixhr",
     "assistant": "FixHR is an all-in-one HR software that helps businesses streamline their HR processes. It offers features like attendance tracking, payroll management, employee self-service portal, policy management, benefits administration, time off requests, performance reviews, onboarding, exit surveys, compliance reports, analytics, custom fields, integrations, mobile app, etc."
+  },
+  {
+    "user": "what is fixhr",
+    "assistant": "FixHR is an all-in-one HR software that helps businesses streamline their HR processes. It offers features like attendance tracking, payroll management, employee self-service portal, policy management, benefits administration, time off requests, performance reviews, onboarding, exit surveys, compliance reports, analytics, custom fields, integrations, mobile app, etc."
+  },
+  {
+    "user": "show gate pass list",
+    "assistant": "Gate Pass List → This feature allows managers to grant temporary access to a specific area or room within the office premises. It helps maintain security while allowing flexibility for short visits by authorized personnel."
+  },
+  {
+    "user": "show gate pass list",
+    "assistant": "Gate Pass List → This feature allows managers to grant temporary access to a specific area or room within the office premises. It helps maintain security while allowing flexibility for short visits by authorized personnel."
+  },
+  {
+    "user": "show pending gate pass",
+    "assistant": "Pending Gate Passes: This shows all approved but not yet used gate passes."
+  },
+  {
+    "user": "give me pending gatepass",
+    "assistant": "Pending Gate Passes: These are requests that have been submitted but not yet approved or rejected by managers. They indicate a request for an employee's physical presence at the office on a specific date."
+  },
+  {
+    "user": "pending gatepass list",
+    "assistant": "Pending Gate Pass List: This shows all approved but not yet activated gate passes."
+  },
+  {
+    "user": "show pending gate pass",
+    "assistant": "Pending Gate Passes: This shows all approved but not yet used gate passes."
+  },
+  {
+    "user": "mujhe kal shadi me jana hai",
+    "assistant": "FixHR Support Number: +91 7880128802"
+  },
+  {
+    "user": "pending misspunchs do",
+    "assistant": "Pending Miss Punches → Automatically converted into approved or rejected based on company policy."
+  },
+  {
+    "user": "Kaun kaun se gate pass abhi approval me hain?",
+    "assistant": "Gate pass approval process:"
+  },
+  {
+    "user": "gate pass list do",
+    "assistant": "Gate Pass List → This feature shows all approved gate passes for a specific employee or department. It helps monitor access permissions and ensure security compliance."
+  },
+  {
+    "user": "show miss punch list",
+    "assistant": "Miss Punch → Missed time tracking → Automatic compensatory action → Payroll adjustment"
+  },
+  {
+    "user": "show miss punch list",
+    "assistant": "Miss Punch → Missed time tracking → Automatic compensatory action → Payroll adjustment"
+  },
+  {
+    "user": "show miss punch list",
+    "assistant": "Miss Punch → Missed time tracking → Automatic compensatory action → Payroll adjustment"
+  },
+  {
+    "user": "Kaun kaun se gate pass abhi approval me hain?",
+    "assistant": "Gate pass approval process:"
+  },
+  {
+    "user": "what is fixhr",
+    "assistant": "FixHR is an all-in-one HR software that helps businesses streamline their HR processes. It offers features like attendance tracking, payroll management, employee self-service portal, policy management, benefits administration, time off requests, performance reviews, onboarding, exit surveys, compliance reports, analytics, custom fields, integrations, mobile app, etc."
+  },
+  {
+    "user": "fixhr bakiyon se kaise best hai",
+    "assistant": "FixHR offers a comprehensive solution that covers all aspects of HR management including attendance, payroll, leaves, policies, benefits, onboarding, offboarding, employee self-service, reports, audits, compliance, time tracking, shift planning, expense management, performance reviews, learning & development, awards, recognition, feedback, surveys, analytics, dashboards, integrations, mobile app, customization, API access, monitoring, alerts, notifications, email integration, calendar sync, GPS location, biometric attendance, remote work, flexible working hours, holiday calendars, policy updates, change requests, role assignments, departmental structures, team collaboration, project management, task delegation, milestone tracking, budgets, forecasts, financial reporting, budget variance analysis, cost control, spend analysis, savings optimization, ROI calculation, benchmarking, KPI tracking, goal setting, progress monitoring, achievement celebration, gamification, leaderboards, badges, certificates, skill assessment, certifications, career paths, succession planning, talent acquisition, hiring process automation, applicant tracking, interview scheduling, candidate communication, offer generation,"
+  },
+  {
+    "user": "explain types of leave",
+    "assistant": "FixHR offers various types of leave including annual, casual, sick, maternity, paternity, adoption, jury duty, bereavement, and more. Employees can easily request, track, and approve different types of leaves based on company policy."
+  },
+  {
+    "user": "what is maternity leave",
+    "assistant": "In FixHR, Maternity Leave policy allows eligible female employees to take up to 16 weeks off work before or after childbirth. This period starts from the date of delivery if applicable. The company pays full salary during this time as per statutory requirements."
+  },
+  {
+    "user": "explain regulatory docs",
+    "assistant": "FixHR complies with GDPR, KYC, FDI, PAN card, Aadhaar, EPF, etc., as required by law."
+  },
+  {
+    "user": "what is regulatory documents",
+    "assistant": "FixHR complies with GDPR, PDP, ISO 27001, SOC 2 Type II audit certification."
+  },
+  {
+    "user": "Regulatory documents kya hote hain HR mein?",
+    "assistant": "FixHR complies with GDPR, PDPO, FIPPA, etc., as applicable. For specific regulations, please contact FixHR support."
+  },
+  {
+    "user": "can you explain shift policy",
+    "assistant": "FixHR allows flexible shift planning based on department needs. Managers define shifts using a simple interface. This flexibility helps maintain productivity while accommodating employee preferences."
+  },
+  {
+    "user": "explain week off policy",
+    "assistant": "FixHR allows up to 15 days of paid annual leave based on company policy. This includes public holidays, Saturdays, Sundays, and other approved leaves like maternity, paternity, etc."
+  },
+  {
+    "user": "explain group claim",
+    "assistant": "Group claim in FixHR allows multiple employees to submit a single claim together. This feature saves time and simplifies the process when several team members need to request reimbursement for expenses like travel or meals during a business trip."
+  },
+  {
+    "user": "explain reimbursment and settelment",
+    "assistant": "Reimbursement in FixHR means that when an employee submits a claim for expenses like travel or meals, FixHR processes it and pays back the approved amount directly into their account. This makes managing expenses easy and transparent."
+  },
+  {
+    "user": "explain settelment",
+    "assistant": "FixHR offers a simple and quick settlement process where approved expense claims get automatically converted into salary credits or direct bank transfers based on company policy. This saves time and reduces paperwork."
+  },
+  {
+    "user": "explain traval request",
+    "assistant": "In FixHR, a travel request allows an employee to plan their trip by selecting dates, destinations, modes of transport, accommodation, meals, and other expenses. This helps ensure that all travel costs are properly documented and approved before submission for reimbursement."
+  },
+  {
+    "user": "hi",
+    "assistant": "FixHR support number +91 7880128802"
+  },
+  {
+    "user": "hello",
+    "assistant": "FixHR support number +91 7880128802"
+  },
+  {
+    "user": "good morning",
+    "assistant": "Good morning!"
+  },
+  {
+    "user": "hello",
+    "assistant": "FixHR support number +91 7880128802"
+  },
+  {
+    "user": "give me detailed information about fixhr",
+    "assistant": "FixHR offers a comprehensive set of tools that streamline HR processes like onboarding, offboarding, attendance tracking, payroll management, leave requests, policy updates, employee self-service, reporting, analytics, compliance, time & attendance integration, mobile app accessibility, customization options, multi-language support, GDPR compliance, audit trails, role-based access control, real-time notifications, seamless integrations, advanced security measures, easy setup, quick deployment, intuitive interface, flexible plans, global reach, customer reviews, industry certifications, future roadmap, FAQ section, community forum, email support, phone support, live chat, knowledge base, video tutorials, webinars, online demos, free trial period, feedback collection, client testimonials, case studies, success stories, referral program, discounts, loyalty benefits, annual renewal process, contract terms, billing details, payment methods, refund policy, dispute resolution, service level agreement, privacy policy, terms of use, change log, version history, update schedule, feature list, release notes, technical documentation, API reference, developer portal, SDK"
+  },
+  {
+    "user": "explain fixhr in detail",
+    "assistant": "FixHR is an all-in-one HR software that streamlines employee management, payroll, attendance, benefits, compliance, and more. It's easy to use, customizable, and scalable. With FixHR, you get a single platform for managing your entire workforce efficiently."
+  },
+  {
+    "user": "hello",
+    "assistant": "FixHR support number +91 7880128802"
+  },
+  {
+    "user": "explain fixhr",
+    "assistant": "FixHR is an all-in-one HR software that streamlines employee management tasks like attendance, payroll, leaves, policies, etc., with easy integration and customization options."
+  },
+  {
+    "user": "hi",
+    "assistant": "FixHR support number +91 7880128802"
+  },
+  {
+    "user": "hello",
+    "assistant": "FixHR support number +91 7880128802"
+  },
+  {
+    "user": "hi",
+    "assistant": "FixHR support number +91 7880128802"
+  },
+  {
+    "user": "oiuhui",
+    "assistant": "FixHR Support Number: +91 7880128802"
+  },
+  {
+    "user": "h",
+    "assistant": "FixHR Support Number: +91 7880128802"
+  },
+  {
+    "user": "jhk",
+    "assistant": "FixHR Support Number: +91 7880128802"
+  },
+  {
+    "user": "kjhgkjh",
+    "assistant": "I am not sure about this. Please contact FixHR support at +91 7880128802 or support@fixingdots.com for accurate information."
+  },
+  {
+    "user": "hello",
+    "assistant": "FixHR support number +91 7880128802"
+  },
+  {
+    "user": "gatepass for client meeting 9 dec 4 pm to 6 pm",
+    "assistant": "Gate Pass Request - FixHR"
+  },
+  {
+    "user": "apply gatepass for client meeting 9 dec 4 pm to 6 pm",
+    "assistant": "Gate Pass Request → Client Meeting on Dec 9th from 4 PM to 6 PM"
+  },
+  {
+    "user": "gatepass for client meeting 9 dec 4 pm to 6 pm",
+    "assistant": "Gate Pass Request - FixHR"
+  },
+  {
+    "user": "Ek trip create karna hai trip name Marketing Tour destination Lucknow purpose Visit remark Shops survey karna hai",
+    "assistant": "FixHR me travel request kyonki marketing tour ke liye?"
+  },
+  {
+    "user": "Ek new trip create kar do trip name Client Follow Up destination Bangalore purpose Re Visit start date 5 January 2026 end date 6 January 2026 start time 9 AM end time 4 PM remark Pending work check karna hai",
+    "assistant": "FixHR mein travel request se parhna jata hai. This will be approved by manager if needed."
+  },
+  {
+    "user": "Ek trip create karna hai trip name Marketing Tour destination Lucknow purpose Visit start date 14 December end date 15 December start time 9 AM end time 5 PM",
+    "assistant": "FixHR me travel request generate karega."
   }
 ]

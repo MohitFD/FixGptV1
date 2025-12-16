@@ -1,3 +1,11 @@
-env_version_1/
+venv/
 __pycache__/
 *.pyc
+core/merged_phi3/
+.history/
+core/merged_phi3_intent/
+core/new_model/
+bc_v3_0.py
+model/
+
+

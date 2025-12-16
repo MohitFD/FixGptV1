@@ -11,11 +11,12 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
-
+import requests
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-
+GOOGLE_PLACES_BROWSER_KEY = "AIzaSyBept2iO1bVOoeXiM5_oy5H9Zv0FtDWo-Y"
+FIXHR_BASE_URL = "https://dev.fixhr.app"
+# FIXHR_TOKEN = requests.session.get("fixhr_token")
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 

@@ -1,4 +1,3 @@
-
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import json
@@ -19,62 +18,73 @@ def get_device():
     print(">> [phi3_intent] Using CPU")
     return "cpu"
 
-SYSTEM_PROMPT = """
-You are an advanced NLU engine FixGpt for Fixhr.
-Your output must ALWAYS be only valid JSON. No extra text.
+SYSTEM_PROMPT = """You are an NLU engine for FixHR application. Extract intent and entities from user messages.
 
-IMPORTANT LOGIC:
-- If user is EXPLAINING an intent, asking ABOUT an intent, asking "what is…", "how to…", "explain…", or talking about an intent in general → intent MUST be "general".
-- Intent should ONLY be specific (apply_leave, apply_miss_punch, apply_gate_pass, attendance_report, payslip, approve leave, approve gatepass, approve missed, pending_leave, pending_gatepass, pending_missed_punch, my_leaves, my_missed_punch, my_gatepass, my_attendance, attendance_report, reject leave, reject gatepass, reject missed, leave_balance, privacy_policy, holiday_list) when the user is actually REQUESTING or APPLYING that action.
-- Do NOT classify intent based on explanation, definition, or discussion.
+CRITICAL RULES:
+1. Output ONLY valid JSON - no explanations, no extra text
+2. Intent "general" = user asking about/explaining something (what is, how to, tell me about)
+3. Specific intent = user wants to DO that action (apply, show, get, approve, reject)
 
-INTENTS:
-- apply_leave
-- apply_miss_punch
-- apply_gate_pass
-- attendance_report
-- payslip
-- general
-- approve leave
-- approve gatepass
-- approve missed
-- pending_leave
-- pending_gatepass
-- pending_missed_punch
-- my_leaves
-- my_missed_punch
-- my_gatepass
-- my_attendance
-- attendance_report
-- reject leave
-- reject gatepass
-- reject missed
-- leave_balance
-- privacy_policy
-- holiday_list
+INTENT CATEGORIES:
 
-Extract:
-- date
-- date_range
-- time
-- time_range
-- reason
-- other_entities
+A. LEAVE MANAGEMENT:
+- "apply_leave" → user wants to apply/request leave (e.g., "I want leave", "apply leave for tomorrow")
+- "my_leaves" → user wants to see their own leaves (e.g., "show my leaves", "my leave history")
+- "leave_list" → user wants to see all leaves (e.g., "show all leaves", "leave requests")
+- "pending_leave" → user wants pending leave requests (e.g., "pending leaves", "leaves to approve")
+- "approve_leave" → user wants to approve leave (e.g., "approve leave", "accept leave request")
+- "reject_leave" → user wants to reject leave (e.g., "reject leave", "deny leave request")
+- "leave_balance" → user wants leave balance (e.g., "how many leaves", "leave balance")
 
-Output Schema:
+B. ATTENDANCE & PUNCH:
+- "apply_miss_punch" → user wants to apply for missed punch (e.g., "forgot to punch", "mark attendance")
+- "my_missed_punch" → user wants their missed punch records (e.g., "my missed punches")
+- "pending_missed_punch" → pending missed punch requests (e.g., "pending missed punches")
+- "misspunch_list" → all missed punch records (e.g., "show all missed punches")
+- "approve_missed" → approve missed punch (e.g., "approve missed punch")
+- "reject_missed" → reject missed punch (e.g., "reject missed punch")
+- "my_attendance" → user's attendance (e.g., "my attendance", "show my attendance")
+- "attendance_report" → attendance report (e.g., "attendance report", "team attendance")
+
+C. GATE PASS:
+- "apply_gate_pass" → user wants gate pass (e.g., "I need gate pass", "apply gate pass")
+- "my_gatepass" → user's gate passes (e.g., "my gate passes")
+- "gatepass_list" → all gate passes (e.g., "show all gate passes")
+- "pending_gatepass" → pending gate pass requests (e.g., "pending gate passes")
+- "approve_gatepass" → approve gate pass (e.g., "approve gate pass")
+- "reject_gatepass" → reject gate pass (e.g., "reject gate pass")
+
+D. TADA (Travel Allowance & Daily Allowance):
+- "create_tada_outstation" → user wants to create a new outstation TADA request (e.g., "create TADA outstation", "make a travel request outstation",
+    "I want to create a TADA outstation request", "Ek trip banana hai yaar—trip name ‘Office Visit’, destination Mumbai rakh do, 
+    purpose Visit aur remark me likh dena ‘Manager se meeting hai’")
+- "create_tada_local" → user wants to create a new TADA local request (e.g., "create TADA local", "make a local travel request", "apply TADA local", 
+    "I want to create a TADA local request", "generate local travel request")
+
+E. TADA APPROVAL LIST:
+- "tada_claim_list" → user wants to see TADA claim approval list
+- "tada_request_list" → user wants to see TADA request approval list
+
+F. COMPOFF APPROVAL LIST:
+- "compoff_list" → user wants to see CompOff request list
+- "pending_compoff" → user wants to see pending CompOff approval list
+
+G. OTHER:
+- "payslip" → user wants payslip (e.g., "show payslip", "download salary slip")
+- "holiday_list" → holidays (e.g., "show holidays", "holiday calendar")
+- "privacy_policy" → privacy policy (e.g., "privacy policy", "data policy")
+- "general" → asking questions, explanations, greetings, unclear requests
+
+Output JSON Schema:
 {
   "intent": "<string>",
   "confidence": <float>,
-  "slots": {
-    "date": "<string>",
-    "date_range": "<string>",
-    "time": "<string>",
-    "time_range": "<string>",
-    "reason": "<string>",
-    "other_entities": {}
-  }
+  "reason": "<string | null>",
+  "destination": "<string | null>"
+  "leave_category": "<string | null>"
 }
-"""
+
+Remember: Output ONLY the JSON object. No markdown, no backticks, no explanation."""
 
 
 # ---------------------- MODEL LOADING ----------------------
@@ -124,9 +134,18 @@ def load_model():
 
 
 # ---------------------- PROMPT BUILDER ----------------------
-def make_prompt(user_msg):
-    return f"<|system|>\n{SYSTEM_PROMPT}\n</s>\n<|user|>\n{user_msg}\n</s>\n<|assistant|>"
+def make_prompt(user_msg, custom_prompt=None):
+    """
+    If custom_prompt is passed → override system prompt.
+    Otherwise use default SYSTEM_PROMPT.
+    """
+    system_text = custom_prompt if custom_prompt else SYSTEM_PROMPT
 
+    return (
+        f"<|system|>\n{system_text}\n</s>\n"
+        f"<|user|>\n{user_msg}\n</s>\n"
+        f"<|assistant|>"
+    )
 
 # ---------------------- IMPROVED JSON SAFE FIXER ----------------------
 def fix_json_string(bad_json):
@@ -204,29 +223,52 @@ def extract_json_fallback(text):
     result = {
         "intent": "",
         "confidence": 0.0,
-        "slots": {}
+        "reason": "",
+        "destination": "",
+        "leave_category": "",
+
+        # NEW FIELDS
+        "trip_name": "",
+        "purpose": "",
+        "remark": ""
     }
-    
-    # Try to extract intent
+
     intent_match = re.search(r'"intent"\s*:\s*"([^"]+)"', text)
     if intent_match:
         result["intent"] = intent_match.group(1)
-    
-    # Try to extract confidence
+
     conf_match = re.search(r'"confidence"\s*:\s*([\d.]+)', text)
     if conf_match:
-        result["confidence"] = float(conf_match.group(1))
-    
-    # Try to extract slots
-    slots = {}
-    for field in ["date", "date_range", "time", "time_range", "reason"]:
-        match = re.search(rf'"{field}"\s*:\s*"([^"]+)"', text)
-        if match:
-            slots[field] = match.group(1)
-    
-    if slots:
-        result["slots"] = slots
-    
+        try:
+            result["confidence"] = float(conf_match.group(1))
+        except ValueError:
+            result["confidence"] = 0.0
+
+    reason_match = re.search(r'"reason"\s*:\s*"([^"]+)"', text)
+    if reason_match:
+        result["reason"] = reason_match.group(1)
+
+    destination_match = re.search(r'"destination"\s*:\s*"([^"]+)"', text)
+    if destination_match:
+        result["destination"] = destination_match.group(1)
+        
+    leave_category = re.search(r'"leave_category"\s*:\s*"([^"]+)"', text)
+    if leave_category:
+        result["leave_category"] = leave_category.group(1)
+
+    # NEW FIELD MATCHERS
+    trip_name_match = re.search(r'"trip_name"\s*:\s*"([^"]+)"', text)
+    if trip_name_match:
+        result["trip_name"] = trip_name_match.group(1)
+
+    purpose_match = re.search(r'"purpose"\s*:\s*"([^"]+)"', text)
+    if purpose_match:
+        result["purpose"] = purpose_match.group(1)
+
+    remark_match = re.search(r'"remark"\s*:\s*"([^"]+)"', text)
+    if remark_match:
+        result["remark"] = remark_match.group(1)
+
     return result
 
 
@@ -266,53 +308,62 @@ def generate_json(tokenizer, model, text, device):
 # ---------------------- EXTRACT FIELDS ----------------------
 def extract_fields(raw_output):
     try:
-        # Always fix JSON first
         if isinstance(raw_output, str):
             data = fix_json_string(raw_output)
         else:
             data = raw_output
 
-        intent = data.get("intent", "")
-        confidence = data.get("confidence", 0.0)
-        slots = data.get("slots", {})
+        intent = data.get("intent", "") or ""
 
-        return (
-            intent,
-            confidence,
-            slots.get("date", ""),
-            slots.get("date_range", ""),
-            slots.get("time", ""),
-            slots.get("time_range", ""),
-            slots.get("reason", ""),
-            slots.get("other_entities", {})
-        )
+        conf_val = data.get("confidence", 0.0)
+        try:
+            confidence = float(conf_val)
+        except (TypeError, ValueError):
+            confidence = 0.0
+
+        reason = data.get("reason", "") or ""
+        destination = data.get("destination", "") or ""
+        leave_category = data.get("leave_category", "") or ""
+
+        # NEW FIELDS
+        trip_name = data.get("trip_name", "") or ""
+        purpose = data.get("purpose", "") or ""
+        remark = data.get("remark", "") or ""
+
+        return intent, confidence, reason, destination, leave_category, trip_name, purpose, remark
 
     except Exception as e:
         print("Extractor error:", e)
-        return "", 0.0, "", "", "", "", "", {}
+        return "", 0.0, "", "", "", "", "", ""
 
 
 print(">> [phi3_intent] Initializing global classifier...")
 TOKENIZER, MODEL, DEVICE = load_model()
 print(">> [phi3_intent] Global classifier ready ✅")
 
-def intent_model_call(user_msg):
-        print(f"user_msg on intent_model_call========= : {user_msg}")
-        prompt = make_prompt(user_msg)
-        raw = generate_json(TOKENIZER, MODEL, prompt, DEVICE)
-        
-        intent, confidence, date, date_range, time, time_range, reason, other = extract_fields(raw)
-        print(f"intent, confidence, date, date_range, time, time_range, reason, other =============== : {intent}, {confidence}, {date}, {date_range}, {time}, {time_range}, {reason}, {other}")
-        
-        return intent, confidence, date, date_range, time, time_range, reason, other
-    
+def intent_model_call(user_msg, custom_prompt=None):
+    # print(f"user_msg on intent_model_call========= : {custom_prompt}")
+
+    prompt = make_prompt(user_msg, custom_prompt)
+
+    raw = generate_json(TOKENIZER, MODEL, prompt, DEVICE)
+
+    intent, confidence, reason, destination, leave_category, trip_name, purpose, remark = extract_fields(raw)
+
+    # print(
+    #     "intent, confidence, reason, destination =============== : "
+    #     f"{intent}, {confidence}, {reason}, {destination}"
+    # )
+
+    return intent, confidence, reason, destination, leave_category, trip_name, purpose, remark
+
 
 
 
 
 # ---------------------- MAIN LOOP ----------------------
 if __name__ == "__main__":
-    tokenizer, model, device = load_model()
+    
 
     print("=== Phi-3 Mini JSON Chat NLU ===")
 
@@ -320,23 +371,44 @@ if __name__ == "__main__":
         user = input("\nYou: ").strip()
         if user.lower() == "exit":
             break
+        
+        custom_prompt = """Extract the following fields from the user message:
 
-        prompt = make_prompt(user)
-        raw = generate_json(tokenizer, model, prompt, device)
+- trip_name
+- destination
+- purpose
+- remark
 
-        intent, confidence, date, date_range, time, time_range, reason, other = extract_fields(raw)
+Rules:
+1. Output ONLY a valid JSON object.
+2. If a field is missing, return it as an empty string "".
+3. Do not add explanations or extra text.
+4. Detect fields only based on user's text.
 
-        print("\n" + "="*50)
+Output JSON format:
+{
+  "trip_name": "",
+  "destination": "",
+  "purpose": "",
+  "remark": ""
+}
+"""
+
+
+
+        intent, confidence, reason, destination, leave_category, trip_name, purpose, remark = intent_model_call(user, custom_prompt)
+
+        print("\n" + "=" * 50)
         print("Intent:", intent)
         print("Confidence:", confidence)
-        print("Date:", date)
-        print("Date Range:", date_range)
-        print("Time:", time)
-        print("Time Range:", time_range)
         print("Reason:", reason)
-        print("Other:", other)
-        print("="*50)
+        # print("Destination:", destination)
+        print("leave category: ",leave_category)
+        print("=" * 50)
+        print("destination:--- ", destination)
+        print("trip name:---- ", trip_name)
+        print("purpose:---- ", purpose)
+        print("remark: -----", remark)
 
         print("\nRaw AI JSON:")
-        print(raw)
         print("\n")
