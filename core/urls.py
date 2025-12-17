@@ -25,16 +25,16 @@ urlpatterns = [
     path('api/conversations/load/', views.load_conversation, name='load_conversation'),
     path('api/conversations/delete/', views.delete_conversation, name='delete_conversation'),
     path("api/chat/search/", views.search_conversations, name="chat_search"),
-    path("api/tada/purposes/", views.tada_purposes, name="tada_purposes"),
-    path("api/tada/types/", views.tada_travel_types, name="tada_travel_types"),
-    path("api/tada/create/", views.tada_create_request, name="tada_create_request"),
+    # path("api/tada/purposes/", views.tada_purposes, name="tada_purposes"),
+    # path("api/tada/types/", views.tada_travel_types, name="tada_travel_types"),
+    # path("api/tada/create/", views.tada_create_request, name="tada_create_request"),
     
     # ==================================================================================
-    path("filter-plan/", views.filter_plan_list, name="filter_plan_list"),       # GET
-    path("filter-plan/post/", views.filter_plan_post, name="filter_plan_post"), # POST proxy
-    path("claim-list/<int:travel_type_id>/", views.claim_list, name="claim_list"),
-    path("acceptance-list/<int:travel_type_id>/", views.acceptance_list, name="acceptance_list"),
-    path("claim-pdf/<str:token_hash>/", views.download_claim_pdf, name="claim_pdf"),
+    # path("filter-plan/", views.filter_plan_list, name="filter_plan_list"),       # GET
+    # path("filter-plan/post/", views.filter_plan_post, name="filter_plan_post"), # POST proxy
+    # path("claim-list/<int:travel_type_id>/", views.claim_list, name="claim_list"),
+    # path("acceptance-list/<int:travel_type_id>/", views.acceptance_list, name="acceptance_list"),
+    # path("claim-pdf/<str:token_hash>/", views.download_claim_pdf, name="claim_pdf"),
     # ==================================================================================
 
 
