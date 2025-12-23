@@ -2525,6 +2525,7 @@ def chat_api(request):
     #     "holidays": fetch_holidays({"authorization": f"Bearer {token}"})
     # })
     
+<<<<<<< Updated upstream
     # return handle_attendance_report("attendance", token, request, msg)
     
     # return handle_pending_gatepass(token, request.session.get("role_name"))
@@ -2552,3 +2553,7 @@ def chat_api(request):
     payload = {"reply": response}
     # payload.update(meta)
     return JsonResponse(payload)
+=======
+    return handle_attendance_report("attendance", token, request, msg)
+        
+>>>>>>> Stashed changes

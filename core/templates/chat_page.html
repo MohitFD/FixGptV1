@@ -1816,6 +1816,7 @@
 
     white-space: nowrap;
 }
+<<<<<<< Updated upstream
 /* Employee column */
 .attendance-table th:nth-child(1),
 .attendance-table td:nth-child(1) {
@@ -1837,6 +1838,27 @@
 
 
 
+=======
+
+/* Employee Name column (LEFT STICKY) */
+.attendance-table th:first-child,
+.attendance-table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 4;
+
+    background: var(--card);
+    text-align: left;
+    font-weight: 600;
+
+    min-width: 200px;      /* ✅ full name visible */
+    max-width: 280px;
+
+    white-space: normal;  /* ✅ wrap allowed */
+    word-break: break-word;
+}
+
+>>>>>>> Stashed changes
 /* Status colors */
 .att-ABS { color: #ef4444; font-weight: 600; }
 .att-P   { color: #16a34a; font-weight: 600; }
@@ -1858,6 +1880,7 @@
     background: var(--accent);
 }
 
+<<<<<<< Updated upstream
 /* ================= GATEPASS TABLE COLUMN CONTROL ================= */
 
 
@@ -2162,6 +2185,18 @@
 
 
 
+=======
+.attendance-table {
+    width: 100%;
+    table-layout: fixed;
+}
+
+.attendance-wrapper {
+    overflow: hidden;
+}
+
+
+>>>>>>> Stashed changes
 </style>
 </head>
 <body>
@@ -2963,6 +2998,7 @@ function renderLeaveCards(data) {
 
 function renderGatepassCards(data) {
     const box = document.getElementById("chatMessages");
+<<<<<<< Updated upstream
 
     // Title
     const title = document.createElement("div");
@@ -3031,6 +3067,74 @@ function renderGatepassCards(data) {
     wrap.appendChild(table);
     box.appendChild(wrap);
 
+=======
+
+    const title = document.createElement("div");
+    title.className = "msg bot";
+    title.innerHTML = `<b>${data.reply}</b>`;
+    box.appendChild(title);
+
+    const groups = { Requested: [], Approved: [], Rejected: [] };
+
+    data.gatepasses.forEach(gp => {
+        const st = (gp.status_name || "Requested").toLowerCase();
+        if (st.includes("request")) groups.Requested.push(gp);
+        else if (st.includes("approve")) groups.Approved.push(gp);
+        else groups.Rejected.push(gp);
+    });
+
+    const renderGroup = (label, items, cssClass) => {
+        if (!items.length) return;
+
+        const head = document.createElement("div");
+        head.className = "msg bot";
+        head.innerHTML = `<b>${label}</b>`;
+        box.appendChild(head);
+
+        items.forEach(gp => {
+
+            const card = document.createElement("div");
+            card.className = `gatepass-card ${cssClass}`;
+
+            const isPending = !gp.status_name ||
+                               gp.status_name.toLowerCase().includes("request");
+
+            card.innerHTML = `
+                <div>
+                    <p><b>${gp.emp_name}</b></p>
+                    <p>${gp.out_time} → ${gp.in_time}</p>
+                    <p>Reason: ${gp.reason}</p>
+                    <p>Destination: ${gp.destination}</p>
+                    <p><b>Status:</b> ${gp.status_name}</p>
+                </div>
+
+                ${
+                    data.can_approve && isPending
+                    ? `
+                    <div class="gp-actions">
+                        <button class="btn approve"
+                            onclick="handleGatepassAction('${gp.id}','${gp.emp_d_id}','${gp.module_id}','${gp.master_module_id}','approve')">
+                            Approve
+                        </button>
+                        <button class="btn reject"
+                            onclick="handleGatepassAction('${gp.id}','${gp.emp_d_id}','${gp.module_id}','${gp.master_module_id}','reject')">
+                            Reject
+                        </button>
+                    </div>
+                    `
+                    : ""
+                }
+            `;
+
+            box.appendChild(card);
+        });
+    };
+
+    renderGroup("Pending GatePass", groups.Requested, "gp-pending");
+    renderGroup("Approved GatePass", groups.Approved, "gp-approved");
+    renderGroup("Rejected GatePass", groups.Rejected, "gp-rejected");
+
+>>>>>>> Stashed changes
     box.scrollTop = box.scrollHeight;
 }
 
@@ -3305,14 +3409,28 @@ function renderHolidayList(data) {
     header.innerHTML = `<b>${data.reply || "Holiday List"}</b>`;
     box.appendChild(header);
 
+    // No Holiday Condition
     if (!data.holidays || data.holidays.length === 0) {
         const empty = document.createElement("div");
+<<<<<<< Updated upstream
         empty.className = "msg bot";
         empty.textContent = "No holidays found.";
+=======
+        empty.style.cssText = `
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            margin: 12px 0;
+            text-align: center;
+        `;
+        empty.innerHTML = `<b>No holidays found.</b>`;
+>>>>>>> Stashed changes
         box.appendChild(empty);
         return;
     }
 
+<<<<<<< Updated upstream
     // Wrapper
     const wrap = document.createElement("div");
     wrap.className = "holiday-wrapper";
@@ -3351,6 +3469,39 @@ function renderHolidayList(data) {
     wrap.appendChild(table);
     box.appendChild(wrap);
 
+=======
+    // ⭐ Create GRID WRAPPER
+    const grid = document.createElement("div");
+    grid.className = "holiday-grid";
+
+    // ⭐ Create each card
+    data.holidays.forEach(h => {
+        const card = document.createElement("div");
+        card.className = "holiday-card";
+
+        card.innerHTML = `
+            <div class="holiday-header">
+                <div class="holiday-title">🎉 ${h.name}</div>
+                <div class="holiday-month">${h.month} (${h.month_number})</div>
+            </div>
+
+            <div class="holiday-row">
+                <span>📅 Start:</span>
+                <b>${h.start_date}</b>
+            </div>
+
+            <div class="holiday-row">
+                <span>📆 End:</span>
+                <b>${h.end_date}</b>
+            </div>
+        `;
+
+        grid.appendChild(card);
+    });
+
+    // Add grid to chat
+    box.appendChild(grid);
+>>>>>>> Stashed changes
     box.scrollTop = box.scrollHeight;
 }
 
