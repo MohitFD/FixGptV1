@@ -3186,6 +3186,7 @@
                 renderAnnouncements(data);
             }else if (data.reply_type === "compoff_cards") {
                 renderCompoffCards(data);
+                console.log("🚀 Rendering Compoff Cards with data:", data);
                 botReply = data.reply;
             }
             else {
@@ -4386,8 +4387,22 @@
                 <div style="margin-top:6px; font-weight:600; color:${color}">Status: ${co.status_name}</div>
                 ${data.can_approve && co.status_name.toLowerCase().includes("request") ? `
                     <div style="margin-top:12px; display:flex; gap:10px;">
-                        <button class='btn approve' onclick="handleCompoffAction('${co.atd_id}','${co.emp_d_id}','${co.module_id}','${co.master_module_id}','approve')">Approve</button>
-                        <button class='btn reject' onclick="handleCompoffAction('${co.atd_id}','${co.emp_d_id}','${co.module_id}','${co.master_module_id}','reject')">Reject</button>
+                        <button class='btn approve' onclick="handleCompoffAction(
+                                                                                '${co.atd_id}',
+                                                                                '${co.emp_d_id}',
+                                                                                '${co.master_module_id}',  // ✅ 249
+                                                                                '${co.module_id}',         // ✅ 0
+                                                                                'approve'
+                                                                            )">Approve</button>
+
+                        <button class='btn reject' onclick="handleCompoffAction(
+                                                                                '${co.atd_id}',
+                                                                                '${co.emp_d_id}',
+                                                                                '${co.master_module_id}',  // ✅ 249
+                                                                                '${co.module_id}',         // ✅ 0
+                                                                                'reject'
+                                                                            )">Reject</button>
+
                     </div>
                 ` : ""}
             `;
@@ -4400,6 +4415,7 @@
             section("🔴 Rejected", "#f87171", groups.Rejected);
             box.scrollTop = box.scrollHeight;
         }
+
 
         function renderMyMissedCards(data) {
             const box = document.getElementById("chatMessages");
@@ -4967,11 +4983,20 @@
             await sendMsg(cmd);
             setTimeout(() => sendMsg("pending missed punch list"), 1000);
         }
-        async function handleCompoffAction(id, empDid, module_id, master_module_id, action) {
-            const cmd = `${action} compoff|${id}|${empDid}|${module_id}|${master_module_id}|ok`;
-            await sendMsg(cmd);
-            setTimeout(() => sendMsg("compoff list"), 1000);
-        }
+        async function handleCompoffAction(atdId, empDId, moduleId, masterModuleId, action) {
+
+    const note =
+        action === "approve"
+            ? "Approved via chat"
+            : "Rejected via chat";
+
+    const msg = `${action} compoff|${atdId}|${empDId}|${moduleId}|${masterModuleId}|${note}`;
+
+    console.log("📤 Sending CompOff Action:", msg);
+
+    sendMsg(msg); // ✅ now defined
+}
+
 
 
         // CONVERSATION MANAGEMENT

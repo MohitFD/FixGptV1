@@ -61,9 +61,14 @@ D. TADA (Travel Allowance & Daily Allowance):
 - "create_tada_local" → user wants to create a new TADA local request (e.g., "create TADA local", "make a local travel request", "apply TADA local", 
     "I want to create a TADA local request", "generate local travel request")
 
-E. TADA APPROVAL LIST:
-- "tada_claim_list" → user wants to see TADA claim approval list
-- "tada_request_list" → user wants to see TADA request approval list
+E. TADA LOCAL & TADA OUTSTATION
+- "tada_local_claim_list" → user wants to see Local TADA claim approval list
+- "tada_local_request_list" → user wants to see Local TADA request approval list
+- "tada_local_acceptance_list" → user wants to see Local TADA acceptance/approved list
+- "tada_outstation_claim_list" → user wants to see Outstation TADA claim approval list
+- "tada_outstation_request_list" → user wants to see Outstation TADA request approval list
+- "tada_outstation_acceptance_list" → user wants to see Outstation TADA acceptance/approved list
+- "all_tada" → user wants to see complete TADA list (triggered when user message contains: “tada list”, “all tada”, “tada details”, “complete tada”)
 
 F. COMPOFF APPROVAL LIST:
 - "compoff_list" → user wants to see CompOff request list

@@ -11,7 +11,8 @@ from pathlib import Path
 
 _BASE_DIR = Path(__file__).resolve().parent
 MODEL_DIR = str((_BASE_DIR / "merged_phi3").resolve())
-HISTORY_FILE = str((_BASE_DIR / "chat_history.json").resolve())
+
+
 
 
 # --------------------------- GLOBAL SYSTEM PROMPT ---------------------------
@@ -271,25 +272,6 @@ def model_response(message: str) -> str:
     except Exception as e:
         print(f"[ERROR] {e}")
 
-    # ---- history load/save ----
-    try:
-        try:
-            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-                history = json.load(f)
-                if not isinstance(history, list):
-                    history = []
-        except Exception:
-            history = []
-
-        history.append({
-            "user": user_text,
-            "assistant": reply
-        })
-
-        with open(HISTORY_FILE, "w", encoding="utf-8") as f:
-            json.dump(history, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        print(f"[WARN] Could not save history: {e}")
 
     return reply
 
