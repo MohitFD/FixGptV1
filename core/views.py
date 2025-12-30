@@ -8,8 +8,8 @@ from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.views.decorators.http import require_POST, require_http_methods, require_GET, require_POST
 from collections import defaultdict
 # Core imports for intent classification and response generation
-# from core.model_inference2 import model_response
-# from core.phi3_inference_v3 import intent_model_call
+from core.model_inference2 import model_response
+from core.phi3_inference_v3 import intent_model_call
 from django.conf import settings
 from core.extract_date_time import extract_datetime_info
 from django.utils import timezone
@@ -20,8 +20,8 @@ from typing import Optional, List, Dict, Any, Union
 import json
 import os
 # ---------------- API Endpoints ----------------
-FIXHR_LOGIN_URL = "http://192.168.1.53/api/auth/login"
-# FIXHR_LOGIN_URL = "https://dev.fixhr.app/api/auth/login"
+# FIXHR_LOGIN_URL = "http://192.168.1.53/api/auth/login"
+FIXHR_LOGIN_URL = "https://dev.fixhr.app/api/auth/login"
 GATEPASS_URL = "https://dev.fixhr.app/api/admin/attendance/gate_pass"
 GATEPASS_APPROVAL_LIST = "https://dev.fixhr.app/api/admin/attendance/gate_pass_approval"
 APPROVAL_CHECK_URL = "https://dev.fixhr.app/api/admin/approval/approval_check"
@@ -1956,6 +1956,7 @@ def tada_create_request(request):
     # forward to FixHR
     try:
         resp = requests.post(url, headers=headers, data=data, files=files if files else None, timeout=30)
+
         # try parse JSON, fallback to text
         try:
             body = resp.json()
@@ -1972,6 +1973,338 @@ def tada_create_request(request):
         err_body = getattr(e.response, "text", str(e)) if hasattr(e, "response") and e.response is not None else str(e)
         logger.exception("Request to FixHR failed: %s", err_body)
         return JsonResponse({"ok": False, "error": "Request to FixHR failed", "body": err_body}, status=502)
+
+# ==================================================local tada form
+
+
+def _fmt_date(value: str) -> str:
+    """
+    Convert frontend date to FixHR expected format
+    Input  : YYYY-MM-DD
+    Output : DD Mon, YYYY
+    Example: 2025-12-29 -> 29 Dec, 2025
+    """
+    if not value:
+        return ""
+
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").strftime("%d %b, %Y")
+    except ValueError:
+        return value  # already formatted or unknown format
+
+
+def _fmt_time(value: str) -> str:
+    """
+    Convert frontend time to FixHR expected format
+    Input  : HH:MM (24h)
+    Output : HH:MM AM/PM
+    Example: 18:00 -> 06:00 PM
+    """
+    if not value:
+        return ""
+
+    try:
+        return datetime.strptime(value, "%H:%M").strftime("%I:%M %p")
+    except ValueError:
+        return value
+
+
+
+
+
+
+def local_fixhr_headers(request):
+    token = (
+        request.session.get("fixhr_token")
+        or request.COOKIES.get("fixhr_token")
+        or request.headers.get("Authorization", "").replace("Bearer ", "")
+    )
+
+    headers = {
+        "Accept": "application/json",
+    }
+
+    if token:
+        headers["authorization"] = f"Bearer {token}"
+
+    return headers
+
+
+@require_GET
+def local_tada_travel_types(request):
+    """
+    Proxy GET -> FixHR
+    GET /api/admin/tada/travel_type
+
+    Returns:
+    {
+        "status": true,
+        "result": [...]
+    }
+    """
+
+    url = f"{FIXHR_BASE.rstrip('/')}/api/admin/tada/travel_type"
+
+    try:
+        resp = requests.get(
+            url,
+            headers=local_fixhr_headers(request),  # Authorization header
+            timeout=15
+        )
+
+        # Raise for 4xx / 5xx
+        resp.raise_for_status()
+
+        payload = resp.json()
+
+        # FixHR returns { status, result }
+        result = payload.get("result", [])
+
+        return JsonResponse(
+            {
+                "status": True,
+                "result": result
+            }
+        )
+
+    except ValueError:
+        # Upstream returned non-JSON (HTML error page etc.)
+        body = resp.text if 'resp' in locals() else "No response body"
+        logger.error("tada_travel_types: non-JSON response: %s", body[:1000])
+
+        return JsonResponse(
+            {
+                "status": False,
+                "error": "Upstream returned non-JSON response"
+            },
+            status=502
+        )
+
+    except requests.RequestException as e:
+        body = (
+            e.response.text
+            if hasattr(e, "response") and e.response is not None
+            else str(e)
+        )
+        logger.exception("tada_travel_types request failed: %s", body)
+
+        return JsonResponse(
+            {
+                "status": False,
+                "error": "Failed to fetch travel types"
+            },
+            status=502
+        )
+
+@require_GET
+def local_tada_purposes(request):
+    """
+    Proxy GET -> FixHR
+    GET /api/admin/tada/travel_purpose_list
+
+    Returns:
+    {
+        "status": true,
+        "result": [...]
+    }
+    """
+
+    url = f"{FIXHR_BASE.rstrip('/')}/api/admin/tada/travel_purpose_list"
+
+    try:
+        resp = requests.get(
+            url,
+            headers=local_fixhr_headers(request),  # must include Authorization
+            timeout=15
+        )
+
+        # Raise for HTTP 4xx / 5xx
+        resp.raise_for_status()
+
+        # Parse JSON from FixHR
+        payload = resp.json()
+
+        # FixHR usually returns { status: true, result: [...] }
+        result = payload.get("result", [])
+
+        return JsonResponse(
+            {
+                "status": True,
+                "result": result
+            }
+        )
+
+    except ValueError:
+        # FixHR returned non-JSON (HTML error page etc.)
+        body = resp.text if 'resp' in locals() else "No response body"
+        logger.error("tada_purposes: non-JSON response: %s", body[:1000])
+
+        return JsonResponse(
+            {
+                "status": False,
+                "error": "Upstream returned non-JSON response"
+            },
+            status=502
+        )
+
+    except requests.RequestException as e:
+        body = (
+            e.response.text
+            if hasattr(e, "response") and e.response is not None
+            else str(e)
+        )
+        logger.exception("tada_purposes request failed: %s", body)
+
+        return JsonResponse(
+            {
+                "status": False,
+                "error": "Failed to fetch travel purposes"
+            },
+            status=502
+        )
+
+
+
+def _fmt_date_fixhr(d):
+    """
+    Convert YYYY-MM-DD → 'DD Mon, YYYY'
+    Example: 2026-01-20 → 20 Jan, 2026
+    """
+    try:
+        return datetime.strptime(d, "%Y-%m-%d").strftime("%d %b, %Y")
+    except Exception:
+        return ""
+
+def _fmt_time_fixhr(t):
+    """
+    Convert HH:mm → 'hh:mm AM/PM'
+    Example: 17:49 → 05:49 PM
+    """
+    try:
+        return datetime.strptime(t, "%H:%M").strftime("%I:%M %p")
+    except Exception:
+        return ""
+
+@require_POST
+def local_tada_create_request(request):
+    """
+    Accept frontend form and forward to FixHR
+    POST -> /api/admin/tada/travel_details
+    """
+
+    logger.debug("POST keys: %s", list(request.POST.keys()))
+    logger.debug("FILES keys: %s", list(request.FILES.keys()))
+
+    # ---------------- RAW INPUT ----------------
+    trp_name = request.POST.get("trp_name", "").strip()
+    trp_call_id = request.POST.get("trp_call_id", "").strip()
+    trp_destination = request.POST.get("trp_destination", "")  # EMPTY OK
+    trp_purpose = request.POST.get("trp_purpose", "").strip()
+    trp_travel_type_id = request.POST.get("trp_travel_type_id", "").strip()
+    trp_advance = request.POST.get("trp_advance", "0.0")
+    trp_remarks = request.POST.get("trp_remarks", "")
+    trp_request_status = request.POST.get("trp_request_status", "171")
+    trp_details = request.POST.get("trp_details", "[]")
+
+    # ---------------- FORMAT DATE / TIME (FIXHR FORMAT) ----------------
+    trp_start_date = _fmt_date_fixhr(request.POST.get("trp_start_date", ""))
+    trp_end_date   = _fmt_date_fixhr(request.POST.get("trp_end_date", ""))
+    trp_start_time = _fmt_time_fixhr(request.POST.get("trp_start_time", ""))
+    trp_end_time   = _fmt_time_fixhr(request.POST.get("trp_end_time", ""))
+
+    # ---------------- REQUIRED CHECK ----------------
+    required = {
+        "trp_name": trp_name,
+        "trp_start_date": trp_start_date,
+        "trp_end_date": trp_end_date,
+        "trp_start_time": trp_start_time,
+        "trp_end_time": trp_end_time,
+        "trp_purpose": trp_purpose,
+        "trp_travel_type_id": trp_travel_type_id,
+    }
+
+    missing = [k for k, v in required.items() if not v]
+    if missing:
+        return JsonResponse(
+            {"status": False, "error": "Missing required fields", "missing": missing},
+            status=400
+        )
+
+    # ---------------- FIXHR PAYLOAD ----------------
+    url = f"{FIXHR_BASE.rstrip('/')}/api/admin/tada/travel_details"
+    headers = local_fixhr_headers(request)
+    print(headers)
+
+    data = {
+        "trp_start_date": trp_start_date,
+        "trp_end_date": trp_end_date,
+        "trp_start_time": trp_start_time,
+        "trp_end_time": trp_end_time,
+        "trp_name": trp_name,
+        "trp_call_id": trp_call_id,
+        "trp_destination": trp_destination,
+        "trp_purpose": str(trp_purpose),
+        "trp_travel_type_id": str(trp_travel_type_id),
+        "trp_advance": str(trp_advance),
+        "trp_remarks": trp_remarks,
+        "trp_request_status": str(trp_request_status),
+        "trp_details": trp_details,
+    }
+
+    logger.warning("FIXHR PAYLOAD => %s", data)
+
+    # ---------------- FILES ----------------
+    files = []
+    if "trp_document[]" in request.FILES:
+        file_list = request.FILES.getlist("trp_document[]")
+    elif "trp_document" in request.FILES:
+        file_list = request.FILES.getlist("trp_document")
+    else:
+        file_list = []
+
+    for f in file_list:
+        files.append((
+            "trp_document[]",
+            (f.name, f.read(), f.content_type or "application/octet-stream")
+        ))
+
+    # ---------------- FORWARD REQUEST ----------------
+    try:
+        resp = requests.post(
+            url,
+            headers=headers,
+            data=data,
+            files=files if files else None,
+            timeout=30
+        )
+
+        try:
+            body = resp.json()
+        except ValueError:
+            body = resp.text
+
+        if resp.status_code >= 400:
+            return JsonResponse(
+                {
+                    "status": False,
+                    "error": "FixHR API error",
+                    "status_code": resp.status_code,
+                    "body": body
+                },
+                status=502
+            )
+
+        return JsonResponse({"status": True, "result": body})
+
+    except requests.RequestException as e:
+        return JsonResponse(
+            {
+                "status": False,
+                "error": "Failed to connect FixHR",
+                "details": str(e)
+            },
+            status=502
+        )
 
 # ======================================================
 
@@ -2417,65 +2750,188 @@ def handle_travel_request_approval(msg, token):
         return f"Error in travel plan approval: {str(e)}"
 
 
-# ===================================================== gagan
-def handle_tada_local_travel_apply(msg, token):
+# ===================================================== 
+def handle_create_tada_outstation(
+    msg,
+    intent_model_call,
+    datetime_info
+    ):
+    """
+    Handles TADA Outstation creation intent
+    """
 
+    custom_prompt = """Extract the following fields from the user message:
 
-    try:
-        # extract date/time from message
+- trip_name
+- destination
+- purpose_id
+- remark
 
-        dt_info = datetime_info
-        start_date = dt_info.get("start_date")
-        start_time = dt_info.get("start_time")
-        end_time = dt_info.get("end_time")
+Purpose rules:
+- Select ONLY ONE purpose_id from the list below based on the user’s intent.
+- Use the closest matching purpose.
+- If no reasonable match exists, return purpose_id as an empty string "".
 
-        # Default values
-        travel_type_id = 58   # LOCAL
-        purpose_id = 58       # Visit (default)
-        title = "Local Travel Request"
-        destination = ""
-        remarks = "Requested via chatbot"
+Purpose ID mapping:
+- 58 → Visit
+- 59 → Re-Visit
+- 60 → Meeting with client
+- 63 → Meeting
+- 76 → Parts Campaign
+- 77 → Customer Visit for payment collection
+- 78 → Customer Visit for parts Enquiry
+- 79 → Branch Visit
+- 80 → OEM Training or Meeting
 
-        # Convert date format
-        try:
-            sd = datetime.fromisoformat(start_date).strftime("%d %b, %Y")
-            ed = datetime.fromisoformat(end_date).strftime("%d %b, %Y")
-        except:
-            return "❌ Date parsing failed. Please specify date clearly."
+Rules:
+1. Output ONLY a valid JSON object.
+2. If a field is missing, return it as an empty string "".
+3. Do not add explanations or extra text.
+4. Detect fields only based on the user's text.
 
-        headers = {"authorization": f"Bearer {token}"}
+Output JSON format:
+{
+  "trip_name": "",
+  "destination": "",
+  "purpose_id": "",
+  "remark": ""
+}
+"""
 
-        payload = {
-            "trp_end_date": ed,
-            "trp_start_date": sd,
-            "trp_destination": destination,
-            "trp_call_id": title,
-            "trp_name": title,
-            "trp_purpose": purpose_id,
-            "trp_advance": 0.0,
-            "trp_remarks": remarks,
-            "trp_travel_type_id": travel_type_id,
-            "trp_request_status": 140, # Requested
-            "trp_start_time": start_time,
-            "trp_end_time": end_time,
-            "trp_details": []
+    # 🔹 Call intent model
+    (
+        intent,
+        confidence,
+        reason,
+        destination,
+        leave_category,
+        trip_name,
+        purpose,
+        remark
+    ) = intent_model_call(msg, custom_prompt)
+
+    # 🔹 Date & time extraction
+    date_str = datetime_info.get("start_date")
+    end_date_str = datetime_info.get("end_date")
+    out_time_str = datetime_info.get("start_time")
+    in_time_str = datetime_info.get("end_time")
+
+    # 🔹 Debug logs (optional)
+    print("=" * 50)
+    print("Destination :", destination)
+    print("Trip Name   :", trip_name)
+    print("Purpose ID :", purpose)
+    print("Remark     :", remark)
+    print("=" * 50)
+
+    # 🔹 Final response
+    return JsonResponse({
+        "reply_type": "create_tada_request",
+        "suggested": {
+            "trp_name": trip_name or "",
+            "trp_destination": destination or "",
+            "trp_start_date": date_str or "",
+            "trp_end_date": end_date_str or "",
+            "trp_start_time": out_time_str or "",
+            "trp_end_time": in_time_str or "",
+            "trp_advance": "0.0",
+            "trp_purpose": purpose or "",
+            "trp_travel_type_id": "2",   # 2 = Outstation
+            "trp_remarks": remark or ""
         }
+    })
 
-        r = requests.post(
-            TA_DA_TRAVEL_DETAILS_URL,
-            headers=headers,
-            files={k: (None, str(v)) for k,v in payload.items()}
-        )
 
-        data = r.json()
+def handle_create_tada_local(
+    msg,
+    intent_model_call,
+    datetime_info
+):
+    """
+    Handles Local TADA (Local Travel) creation intent
+    """
 
-        if data.get("status"):
-            return f"✅ Local travel request created!\n📅 {sd} → {ed}\n🕒 {start_time} - {end_time}\n📌 Purpose: Visit"
-        else:
-            return f"❌ Failed: {data.get('message')}"
-    
-    except Exception as e:
-        return f"❌ Error: {str(e)}"
+    custom_prompt = """Extract the following fields from the user message:
+
+- trip_name
+- destination
+- purpose_id
+- remark
+
+Purpose rules:
+- Select ONLY ONE purpose_id from the list below based on the user’s intent.
+- Use the closest matching purpose.
+- If no reasonable match exists, return purpose_id as an empty string "".
+
+Purpose ID mapping:
+- 58 → Visit
+- 59 → Re-Visit
+- 60 → Meeting with client
+- 63 → Meeting
+- 76 → Parts Campaign
+- 77 → Customer Visit for payment collection
+- 78 → Customer Visit for parts Enquiry
+- 79 → Branch Visit
+- 80 → OEM Training or Meeting
+
+Rules:
+1. Output ONLY a valid JSON object.
+2. If a field is missing, return it as an empty string "".
+3. Do not add explanations or extra text.
+4. Detect fields only based on the user's text.
+
+Output JSON format:
+{
+  "trip_name": "",
+  "destination": "",
+  "purpose_id": "",
+  "remark": ""
+}
+"""
+
+    # 🔹 Intent model call
+    (
+        intent,
+        confidence,
+        reason,
+        destination,
+        leave_category,
+        trip_name,
+        purpose,
+        remark
+    ) = intent_model_call(msg, custom_prompt)
+
+    # 🔹 Date & time extraction
+    date_str = datetime_info.get("start_date")
+    out_time_str = datetime_info.get("start_time")
+    in_time_str = datetime_info.get("end_time")
+
+    # 🔹 Debug logs (optional)
+    print("=" * 50)
+    print("Local TADA")
+    print("Client / Trip Name :", trip_name)
+    print("Purpose ID        :", purpose)
+    print("Date              :", date_str)
+    print("Start Time        :", out_time_str)
+    print("End Time          :", in_time_str)
+    print("Remark            :", remark)
+    print("=" * 50)
+
+    # 🔹 Final response
+    return JsonResponse({
+        "reply_type": "create_local_travel_request",
+        "reply": "Please fill the travel request form below.",
+        "suggested": {
+            "client": trip_name or "",
+            "date": date_str or "",
+            "trp_start_time": out_time_str or "",
+            "trp_end_time": in_time_str or "",
+            "trp_advance": "0.0",
+            "trp_purpose": purpose or "",
+            "travel_type_id": "58",  # Local travel
+            "remark": remark or ""
+        }
+    })
 
 # =====================================================
 #   tada traval ---------------------------------------------------------------------
@@ -3638,392 +4094,170 @@ def chat_api(request):
 
     print("💬 User Message:", msg)
 
-#     # -------------------------------
-#     # 🧠 INTENT CLASSIFICATION
-#     # -------------------------------
-#     # classification = classify_message(msg)
-#     # intent = classification.get("intent") or "general"
+    # -------------------------------
+    # 🧠 INTENT CLASSIFICATION
+    # -------------------------------
+    # classification = classify_message(msg)
+    # intent = classification.get("intent") or "general"
 
-#     # -------------------------------
-#     # 🔥 Guest User Restriction Logic
-#     # # -------------------------------
-#     if not is_logged_in:
-#         if intent != "general":  
-#             return JsonResponse({
-#                 "reply": "⚠️ Please login to access HR features like leave, attendance, payslip, gatepass & approvals.",
-#                 "reply_type": "text_only"
-#             })
+    # -------------------------------
+    # 🔥 Guest User Restriction Logic
+    # # -------------------------------
+    if not is_logged_in:
+        if intent != "general":  
+            return JsonResponse({
+                "reply": "⚠️ Please login to access HR features like leave, attendance, payslip, gatepass & approvals.",
+                "reply_type": "text_only"
+            })
 
     
-#     # 1) Classify intent using phi3_inference_v3
-#     classification = classify_message(msg)
-#     print(f"classification =============== : {classification}")
-#     intent = classification.get("intent") or "general"
-#     # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-#     reason = classification.get("reason") or "other"
-#     destination = classification.get("destination") or "local"
-#     leave_category = classification.get("leave_category") or "unpaid leave"
-#     print(f"%%%%%%%%%%%%%%%%%%%%%%%%% {reason}, {destination}, {leave_category}")
-#     # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-#     lang = classification.get("language", "en")
-#     confidence = classification.get("confidence", 0.0)
+    # 1) Classify intent using phi3_inference_v3
+    classification = classify_message(msg)
+    print(f"classification =============== : {classification}")
+    intent = classification.get("intent") or "general"
+    # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+    reason = classification.get("reason") or "other"
+    destination = classification.get("destination") or "local"
+    leave_category = classification.get("leave_category") or "unpaid leave"
+    print(f"%%%%%%%%%%%%%%%%%%%%%%%%% {reason}, {destination}, {leave_category}")
+    # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+    lang = classification.get("language", "en")
+    confidence = classification.get("confidence", 0.0)
     
-#     print("🤖 Phi-3 Intent →", classification)
+    print("🤖 Phi-3 Intent →", classification)
     
-#     # 2) If general intent, use model_inference2.py for response
-#     if intent == "general":
-#         reply = model_response(msg) or handle_general_chat(msg, lang)
-#         return JsonResponse({
-#             "reply": reply,
-#             "intent": intent,
-#             "confidence": confidence,
-#             "datetime_info": None,
-#         })
+    # 2) If general intent, use model_inference2.py for response
+    if intent == "general":
+        reply = model_response(msg) or handle_general_chat(msg, lang)
+        return JsonResponse({
+            "reply": reply,
+            "intent": intent,
+            "confidence": confidence,
+            "datetime_info": None,
+        })
     
-#     # 3) Extract datetime info using extract_date_time.py
-#     datetime_info = extract_datetime_info(msg)
-#     decision = build_decision_context(msg, classification, datetime_info)
-#     task = decision.get("task") or "general"
-#     lang = decision.get("language", lang)
+    # 3) Extract datetime info using extract_date_time.py
+    datetime_info = extract_datetime_info(msg)
+    decision = build_decision_context(msg, classification, datetime_info)
+    task = decision.get("task") or "general"
+    lang = decision.get("language", lang)
     
-#     print("📅 DateTime Extract →", datetime_info)
+    print("📅 DateTime Extract →", datetime_info)
     
-#     # 4) Continuation mode: reuse previous slots if user says "also", "again", etc.
-#     if any(w in msg.lower() for w in ["bhi", "also", "same", "phir", "again", "next day", "uske baad"]):
-#         if chat_memory.get("date"):
-#             decision["date"] = chat_memory["date"]
-#         if chat_memory.get("leave_type"):
-#             decision["leave_type"] = chat_memory["leave_type"]
-#         if chat_memory.get("reason"):
-#             decision["reason"] = chat_memory["reason"]
+    # 4) Continuation mode: reuse previous slots if user says "also", "again", etc.
+    if any(w in msg.lower() for w in ["bhi", "also", "same", "phir", "again", "next day", "uske baad"]):
+        if chat_memory.get("date"):
+            decision["date"] = chat_memory["date"]
+        if chat_memory.get("leave_type"):
+            decision["leave_type"] = chat_memory["leave_type"]
+        if chat_memory.get("reason"):
+            decision["reason"] = chat_memory["reason"]
     
-#     meta = {
-#         "intent": task,
-#         "confidence": confidence,
-#         "datetime_info": datetime_info,
-#     }
+    meta = {
+        "intent": task,
+        "confidence": confidence,
+        "datetime_info": datetime_info,
+    }
 
 
 
-#              # ------------------------------------------------------------
-#     # 4) CHECK FOR APPROVAL/REJECTION ACTIONS FIRST (BEFORE TASK ROUTING)
-#     # ------------------------------------------------------------
-#     # Check for compoff approval/rejection - must be checked BEFORE task routing
-#     raw_msg = msg.lower().strip()
-#     # 🔥 HIGHEST PRIORITY: CompOff Approve / Reject
-#     # if "|" in msg_raw and re.match(r"^(approve|reject)\s*compoff\s*\|", msg_raw, re.I):
-#     if raw_msg.startswith("approve compoff") or raw_msg.startswith("reject compoff"):
-#         print("🔥 DIRECT CompOff command detected")
+             # ------------------------------------------------------------
+    # 4) CHECK FOR APPROVAL/REJECTION ACTIONS FIRST (BEFORE TASK ROUTING)
+    # ------------------------------------------------------------
+    # Check for compoff approval/rejection - must be checked BEFORE task routing
+    raw_msg = msg.lower().strip()
+    # 🔥 HIGHEST PRIORITY: CompOff Approve / Reject
+    # if "|" in msg_raw and re.match(r"^(approve|reject)\s*compoff\s*\|", msg_raw, re.I):
+    if raw_msg.startswith("approve compoff") or raw_msg.startswith("reject compoff"):
+        print("🔥 DIRECT CompOff command detected")
 
-#         # ✅ CLEAN ORIGINAL MESSAGE (NOT LOWERCASED)
-#         msg_clean = re.sub(
-#             r"^(approve|reject)\s*compoff\s*\|",
-#             r"\1|",
-#             raw_msg,
-#             flags=re.IGNORECASE
-#         )
+        # ✅ CLEAN ORIGINAL MESSAGE (NOT LOWERCASED)
+        msg_clean = re.sub(
+            r"^(approve|reject)\s*compoff\s*\|",
+            r"\1|",
+            raw_msg,
+            flags=re.IGNORECASE
+        )
 
-#         print(f"🔥 Normalized CompOff message: {msg_clean}")
+        print(f"🔥 Normalized CompOff message: {msg_clean}")
 
-#         return handle_comp_off_approval(msg_clean, token)
+        return handle_comp_off_approval(msg_clean, token)
     
-#     # 5) Handle approval commands (high priority) - use handle_leave_approval=======================================================
-#     raw_msg = msg.lower().strip()
-#     if raw_msg.startswith("approve leave") or raw_msg.startswith("reject leave"):
-#         result = handle_leave_approval(msg, token)
-#         if isinstance(result, JsonResponse):
-#             return result
-#         return JsonResponse({"reply": result})
+    # 5) Handle approval commands (high priority) - use handle_leave_approval=======================================================
+    raw_msg = msg.lower().strip()
+    if raw_msg.startswith("approve leave") or raw_msg.startswith("reject leave"):
+        result = handle_leave_approval(msg, token)
+        if isinstance(result, JsonResponse):
+            return result
+        return JsonResponse({"reply": result})
     
-#     if raw_msg.startswith("approve gatepass") or raw_msg.startswith("reject gatepass"):
-#         result = handle_gatepass_approval(msg, token)
-#         return JsonResponse({"reply": result})
+    if raw_msg.startswith("approve gatepass") or raw_msg.startswith("reject gatepass"):
+        result = handle_gatepass_approval(msg, token)
+        return JsonResponse({"reply": result})
     
-#     if raw_msg.startswith("approve missed") or raw_msg.startswith("reject missed"):
-#         result = handle_missed_approval(msg, token)
-#         return JsonResponse({"reply": result})
+    if raw_msg.startswith("approve missed") or raw_msg.startswith("reject missed"):
+        result = handle_missed_approval(msg, token)
+        return JsonResponse({"reply": result})
     
-#     if raw_msg.startswith("approve travel_request") or raw_msg.startswith("reject travel_request"):
-#         result = handle_travel_request_approval(msg, token)
-#         return JsonResponse({"reply": result})
+    if raw_msg.startswith("approve travel_request") or raw_msg.startswith("reject travel_request"):
+        result = handle_travel_request_approval(msg, token)
+        return JsonResponse({"reply": result})
     
 
-#     if raw_msg.startswith("approve tada_claim") or raw_msg.startswith("reject tada_claim"):
-#         result = handle_tada_claim_approval(msg, token)
-#         return JsonResponse({"reply": result})
+    if raw_msg.startswith("approve tada_claim") or raw_msg.startswith("reject tada_claim"):
+        result = handle_tada_claim_approval(msg, token)
+        return JsonResponse({"reply": result})
 
-#     # 6) Handle specific tasks using existing handlers
+    # 6) Handle specific tasks using existing handlers
 
    
-#     # ==================================
+    # ==================================
 
         
-#     if task == "create_tada_outstation":
-#         custom_prompt = """Extract the following fields from the user message:
-
-# - trip_name
-# - destination
-# - purpose_id
-# - remark
-
-# Purpose rules:
-# - Select ONLY ONE purpose_id from the list below based on the user’s intent.
-# - Use the closest matching purpose.
-# - If no reasonable match exists, return purpose_id as an empty string "".
-
-# Purpose ID mapping:
-# - 58 → Visit
-# - 59 → Re-Visit
-# - 60 → Meeting with client
-# - 63 → Meeting
-# - 76 → Parts Campaign
-# - 77 → Customer Visit for payment collection
-# - 78 → Customer Visit for parts Enquiry
-# - 79 → Branch Visit
-# - 80 → OEM Training or Meeting
-
-# Rules:
-# 1. Output ONLY a valid JSON object.
-# 2. If a field is missing, return it as an empty string "".
-# 3. Do not add explanations or extra text.
-# 4. Detect fields only based on the user's text.
-
-# Output JSON format:
-# {
-#   "trip_name": "",
-#   "destination": "",
-#   "purpose_id": "",
-#   "remark": ""
-# }
-# """
-        
-#         intent, confidence, reason, destination, leave_category, trip_name, purpose, remark = intent_model_call(msg, custom_prompt)
-#         print(f"time: ---- {datetime_info}")
-#         dt_info = datetime_info
-#         date_str = dt_info.get("start_date")
-#         end_date_str = dt_info.get("end_date")
-#         out_time_str = dt_info.get("start_time")
-#         in_time_str = dt_info.get("end_time")
-#         print("=" * 50)
-#         print("destination:--- ", destination)
-#         print("trip name:---- ", trip_name)
-#         print("purpose:---- ", purpose)
-        
-#         print("remark: -----", remark)
-
-#         return JsonResponse({
-#             "reply_type": "create_tada_request",
-#             "suggested": {
-#                 "trp_name": trip_name ,
-#                 "trp_destination": destination,
-#                 "trp_start_date": date_str,
-#                 "trp_end_date": end_date_str,
-#                 "trp_start_time": out_time_str,
-#                 "trp_end_time": in_time_str,
-#                 "trp_advance": "0.0",
-#                 "trp_purpose": purpose,
-#                 "trp_travel_type_id": "2",
-#                 "trp_remarks": remark
-#             }
-#         })
-#  # ========================================gagan tada create local
-#     elif task == "create_tada_local":
-#         reply = handle_tada_local_travel_apply(msg, token)
-#         return JsonResponse({"reply": reply})
-
-        
-#     elif task == "tada_outstation_claim_list":
-#         data = handle_tada_claims(token, status_filter=None, page=1, limit=20)
-#         return JsonResponse(data, safe=False)
+    if task == "create_tada_outstation":
+        return handle_create_tada_outstation(
+            msg=msg,
+            intent_model_call=intent_model_call,
+            datetime_info=datetime_info
+        )
 
     
-#     elif task == "tada_outstation_request_list":
-#         data = handle_travel_requests(token, status_filter=None, page=1, limit=20)
-#         return JsonResponse(data, safe=False)
 
-#     elif task == "apply_leave":
-#         print("entering apply leave")
-#         result = handle_apply_leave(reason, leave_category, msg, token, datetime_info)
-#         if isinstance(result, JsonResponse):
-#             return result
+    elif task == "create_tada_local":
+        return handle_create_tada_local(
+            msg=msg,
+            intent_model_call=intent_model_call,
+            datetime_info=datetime_info
+        )
+
+    elif task == "tada_outstation_claim_list":
+        data = handle_tada_claims(token, status_filter=None, page=1, limit=20)
+        return JsonResponse(data, safe=False)
+
+    
+    elif task == "tada_outstation_request_list":
+        data = handle_travel_requests(token, status_filter=None, page=1, limit=20)
+        return JsonResponse(data, safe=False)
+
+    elif task == "apply_leave":
+        print("entering apply leave")
+        result = handle_apply_leave(reason, leave_category, msg, token, datetime_info)
+        if isinstance(result, JsonResponse):
+            return result
         
-#         # Save to memory
-#         SESSION_MEMORY[user_id] = {
-#             "date": datetime_info.get("start_date", ""),
-#             "leave_type": decision.get("leave_type", "full"),
-#             "reason": decision.get("reason", "")
-#         }
+        # Save to memory
+        SESSION_MEMORY[user_id] = {
+            "date": datetime_info.get("start_date", ""),
+            "leave_type": decision.get("leave_type", "full"),
+            "reason": decision.get("reason", "")
+        }
         
-#         payload = {"reply": result}
-#         payload.update(meta)
-#         return JsonResponse(payload)
+        payload = {"reply": result}
+        payload.update(meta)
+        return JsonResponse(payload)
     
 
-#     elif task == "pending_compoff" or task == "compoff_list":
-#         filter_date = None
-#         filter_month = None
-        
-#         msg_lower = msg.lower().strip()
-        
-#         # Use extract_datetime_info instead of extract_dates
-#         date_info = extract_datetime_info(msg)
-        
-#         # Check for "yesterday" specifically (e.g., "compoff list of yesterday")
-#         if "yesterday" in msg_lower:
-#             yesterday_date = (datetime.now() - timedelta(days=1)).date()
-#             filter_date = yesterday_date.strftime("%d %b, %Y")
-#             print(f"📅 CompOff List - Yesterday filter: {filter_date}")
-#         # Check if it's just "compoff list" (no date/month mentioned) - show today
-#         elif msg_lower in ["compoff list", "pending compoff", "compoff approval", "compoff list.", "pending compoff.", "compoff approval."]:
-#             today_date = datetime.now().date()
-#             filter_date = today_date.strftime("%d %b, %Y")
-#             print(f"📅 CompOff List - Today filter: {filter_date}")
-#         else:
-#             # Check if message contains just a month name (e.g., "compoff list of november")
-#             month_pattern = r"\b(nov|november|dec|december|jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|september|oct|october)\s*(?:(\d{4}))?\b"
-#             month_match = re.search(month_pattern, msg_lower)
-#             if month_match and not re.search(r"\d{1,2}\s+(nov|november|dec|december|jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|september|oct|october)", msg_lower):
-#                 # Only month name found, not a specific date
-#                 month_name = month_match.group(1)
-#                 year = int(month_match.group(2)) if month_match.group(2) else datetime.now().year
-                
-#                 # Map month name to number
-#                 month_map = {
-#                     "jan": 1, "january": 1, "feb": 2, "february": 2,
-#                     "mar": 3, "march": 3, "apr": 4, "april": 4,
-#                     "may": 5, "jun": 6, "june": 6, "jul": 7, "july": 7,
-#                     "aug": 8, "august": 8, "sep": 9, "september": 9,
-#                     "oct": 10, "october": 10, "nov": 11, "november": 11,
-#                     "dec": 12, "december": 12
-#                 }
-#                 month_num = month_map.get(month_name.lower(), datetime.now().month)
-#                 filter_month = (month_num, year)
-#                 print(f"📅 CompOff List - Month filter (from pattern): {calendar.month_name[filter_month[0]]} {filter_month[1]}")
-#             else:
-#                 # Check if there's date information extracted
-#                 start_date_str = date_info.get("start_date")
-#                 end_date_str = date_info.get("end_date")
-                
-#                 # Convert ISO date strings to date objects if needed
-#                 start_date_obj = None
-#                 end_date_obj = None
-                
-#                 if start_date_str:
-#                     try:
-#                         if isinstance(start_date_str, str):
-#                             # extract_datetime_info returns ISO format dates (YYYY-MM-DD)
-#                             start_date_obj = datetime.fromisoformat(start_date_str).date()
-#                         else:
-#                             start_date_obj = start_date_str
-#                     except Exception as e:
-#                         print(f"⚠️ Error parsing start_date_str '{start_date_str}': {e}")
-#                         parsed = dateparser.parse(str(start_date_str))
-#                         start_date_obj = parsed.date() if parsed else None
-                
-#                 if end_date_str:
-#                     try:
-#                         if isinstance(end_date_str, str):
-#                             # extract_datetime_info returns ISO format dates (YYYY-MM-DD)
-#                             end_date_obj = datetime.fromisoformat(end_date_str).date()
-#                         else:
-#                             end_date_obj = end_date_str
-#                     except Exception as e:
-#                         print(f"⚠️ Error parsing end_date_str '{end_date_str}': {e}")
-#                         parsed = dateparser.parse(str(end_date_str))
-#                         end_date_obj = parsed.date() if parsed else None
-                
-#                 # Check if it's a specific date (same start and end date, or only start date)
-#                 if start_date_obj and (not end_date_obj or start_date_obj == end_date_obj):
-#                     filter_date = start_date_obj.strftime("%d %b, %Y")
-#                     print(f"📅 CompOff List - Specific Date filter: {filter_date}")
-#                 # Check if it's a month range (different start/end dates in same month)
-#                 elif start_date_obj and end_date_obj and start_date_obj.month == end_date_obj.month and start_date_obj.year == end_date_obj.year:
-#                     filter_month = (start_date_obj.month, start_date_obj.year)
-#                     print(f"📅 CompOff List - Month filter (from date range): {calendar.month_name[filter_month[0]]} {filter_month[1]}")
-        
-#         return handle_pending_compoff(token, request.session.get("role_name"), filter_date=filter_date, filter_month=filter_month)
-    
-    
-    
-#     elif task == "leave_list" or task == "pending_leave":
-#         return handle_pending_leaves(token, request.session.get("role_name"))
-    
-#     elif task == "apply_gatepass":
-#         print("entering apply gatepass")
-#         result = handle_apply_gatepass(reason, destination, msg, token, datetime_info)
-#         if isinstance(result, JsonResponse):
-#             return result
-        
-#         payload = {"reply": result}
-#         payload.update(meta)
-#         return JsonResponse(payload)
-    
-#     elif task == "pending_gatepass" or task == "gatepass_list":
-#         return handle_pending_gatepass(token, request.session.get("role_name"))
-    
-#     elif task == "apply_missed_punch" or task == "apply_miss_punch":
-#         print("entering apply missed punch")
-#         result = handle_apply_missed_punch(msg, token, datetime_info)
-#         if isinstance(result, JsonResponse):
-#             return result
-        
-#         payload = {"reply": result}
-#         payload.update(meta)
-#         return JsonResponse(payload)
-    
-#     elif task == "pending_missed_punch" or task == "pending_miss_punch" or task == "misspunch_list":
-#         return handle_pending_missed_punch(token, request.session.get("role_name"))
-    
-#     elif task == "my_missed_punch" or task == "my_miss_punch":
-#         return handle_my_missed_punch(token)
-    
-#     elif task == "leave_balance":
-#         response = handle_leave_balance(token)
-#         if isinstance(response, JsonResponse):
-#             return response
-#         payload = {"reply": response}
-#         payload.update(meta)
-#         return JsonResponse(payload)
-    
-#     elif task == "attendance_report":
-#         return handle_attendance_report(decision, token, request, msg)
-#     elif task == "leave_balance":
-#         result = handle_leave_balance(token)
-#         return result   
-#     elif task == "my_leaves":
-#         return handle_my_leaves(token, request.session.get("employee_id"))
-#     elif task == "my_missed_punch":
-#         return handle_my_missed_punch(token)
-#     elif task == "privacy_policy":
-#         # return handle_privacy_policy(token)
-#         data = handle_privacy_policy(token)
-#         return JsonResponse(data, safe=False)
-#     elif task == "payslip":
-#         # return handle_payslip_policy(token)
-#         data = handle_payslip_policy(token)
-#         return JsonResponse(data, safe=False)
-#     elif task == "holiday_list":
-#         holidays = fetch_holidays({"authorization": f"Bearer {token}"})
-#         return JsonResponse({
-#             "reply_type": "holiday_list",
-#             "reply": "📅 Upcoming Holidays",
-#             "holidays": holidays
-#         })
-        
-# # Fallback to general model response
-#     fallback_reply = model_response(msg) or handle_general_chat(msg, lang)
-#     payload = {"reply": fallback_reply}
-#     payload.update(meta)
-   
-#     return JsonResponse(payload)
-# ===================================================
-
-
-#   =============      testing code   ===================================
-
-    # task = "pending_compoff"  # For testing purpose, set task to "pending_compoff"
-    task = msg.lower().strip()
-    if task == "pending_compoff" or task == "compoff_list":
+    elif task == "pending_compoff" or task == "compoff_list":
         filter_date = None
         filter_month = None
         
@@ -4107,32 +4341,91 @@ def chat_api(request):
         
         return handle_pending_compoff(token, request.session.get("role_name"), filter_date=filter_date, filter_month=filter_month)
     
+    
+    
+    elif task == "leave_list" or task == "pending_leave":
+        return handle_pending_leaves(token, request.session.get("role_name"))
+    
+    elif task == "apply_gatepass":
+        print("entering apply gatepass")
+        result = handle_apply_gatepass(reason, destination, msg, token, datetime_info)
+        if isinstance(result, JsonResponse):
+            return result
+        
+        payload = {"reply": result}
+        payload.update(meta)
+        return JsonResponse(payload)
+    
+    elif task == "pending_gatepass" or task == "gatepass_list":
+        return handle_pending_gatepass(token, request.session.get("role_name"))
+    
+    elif task == "apply_missed_punch" or task == "apply_miss_punch":
+        print("entering apply missed punch")
+        result = handle_apply_missed_punch(msg, token, datetime_info)
+        if isinstance(result, JsonResponse):
+            return result
+        
+        payload = {"reply": result}
+        payload.update(meta)
+        return JsonResponse(payload)
+    
+    elif task == "pending_missed_punch" or task == "pending_miss_punch" or task == "misspunch_list":
+        return handle_pending_missed_punch(token, request.session.get("role_name"))
+    
+    elif task == "my_missed_punch" or task == "my_miss_punch":
+        return handle_my_missed_punch(token)
+    
+    elif task == "leave_balance":
+        response = handle_leave_balance(token)
+        if isinstance(response, JsonResponse):
+            return response
+        payload = {"reply": response}
+        payload.update(meta)
+        return JsonResponse(payload)
+    
+    elif task == "attendance_report":
+        return handle_attendance_report(decision, token, request, msg)
+    elif task == "leave_balance":
+        result = handle_leave_balance(token)
+        return result   
+    elif task == "my_leaves":
+        return handle_my_leaves(token, request.session.get("employee_id"))
+    elif task == "my_missed_punch":
+        return handle_my_missed_punch(token)
+    elif task == "privacy_policy":
+        # return handle_privacy_policy(token)
+        data = handle_privacy_policy(token)
+        return JsonResponse(data, safe=False)
+    elif task == "payslip":
+        # return handle_payslip_policy(token)
+        data = handle_payslip_policy(token)
+        return JsonResponse(data, safe=False)
+    elif task == "holiday_list":
+        holidays = fetch_holidays({"authorization": f"Bearer {token}"})
+        return JsonResponse({
+            "reply_type": "holiday_list",
+            "reply": "📅 Upcoming Holidays",
+            "holidays": holidays
+        })
+        
+# Fallback to general model response
+    fallback_reply = model_response(msg) or handle_general_chat(msg, lang)
+    payload = {"reply": fallback_reply}
+    payload.update(meta)
+   
+    return JsonResponse(payload)
+# ===================================================
 
 
 
 
-        #     # Check for compoff approval/rejection - must be checked BEFORE task routing
-    # 🔥 VERY TOP OF MESSAGE HANDLER
-    # 🔥 DIRECT CompOff approve / reject command (HIGH PRIORITY)
 
-    raw_msg = msg.lower().strip()
+# #   =============      testing code   ===================================  
 
-    # 🔥 HIGHEST PRIORITY: CompOff Approve / Reject
-    # if "|" in msg_raw and re.match(r"^(approve|reject)\s*compoff\s*\|", msg_raw, re.I):
-    if raw_msg.startswith("approve compoff") or raw_msg.startswith("reject compoff"):
-        print("🔥 DIRECT CompOff command detected")
 
-        # ✅ CLEAN ORIGINAL MESSAGE (NOT LOWERCASED)
-        msg_clean = re.sub(
-            r"^(approve|reject)\s*compoff\s*\|",
-            r"\1|",
-            raw_msg,
-            flags=re.IGNORECASE
-        )
 
-        print(f"🔥 Normalized CompOff message: {msg_clean}")
 
-        return handle_comp_off_approval(msg_clean, token)
+
 
 
 

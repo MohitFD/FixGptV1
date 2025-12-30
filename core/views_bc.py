@@ -2154,3 +2154,153 @@ def chat_api(request):
     payload.update(meta)
     
     return JsonResponse(payload)
+
+
+
+
+
+
+# ============================== tada bc
+
+if task == "create_tada_outstation":
+        custom_prompt = """Extract the following fields from the user message:
+
+- trip_name
+- destination
+- purpose_id
+- remark
+
+Purpose rules:
+- Select ONLY ONE purpose_id from the list below based on the user’s intent.
+- Use the closest matching purpose.
+- If no reasonable match exists, return purpose_id as an empty string "".
+
+Purpose ID mapping:
+- 58 → Visit
+- 59 → Re-Visit
+- 60 → Meeting with client
+- 63 → Meeting
+- 76 → Parts Campaign
+- 77 → Customer Visit for payment collection
+- 78 → Customer Visit for parts Enquiry
+- 79 → Branch Visit
+- 80 → OEM Training or Meeting
+
+Rules:
+1. Output ONLY a valid JSON object.
+2. If a field is missing, return it as an empty string "".
+3. Do not add explanations or extra text.
+4. Detect fields only based on the user's text.
+
+Output JSON format:
+{
+  "trip_name": "",
+  "destination": "",
+  "purpose_id": "",
+  "remark": ""
+}
+"""
+        
+        intent, confidence, reason, destination, leave_category, trip_name, purpose, remark = intent_model_call(msg, custom_prompt)
+        print(f"time: ---- {datetime_info}")
+        dt_info = datetime_info
+        date_str = dt_info.get("start_date")
+        end_date_str = dt_info.get("end_date")
+        out_time_str = dt_info.get("start_time")
+        in_time_str = dt_info.get("end_time")
+        print("=" * 50)
+        print("destination:--- ", destination)
+        print("trip name:---- ", trip_name)
+        print("purpose:---- ", purpose)
+        
+        print("remark: -----", remark)
+
+        return JsonResponse({
+            "reply_type": "create_tada_request",
+            "suggested": {
+                "trp_name": trip_name ,
+                "trp_destination": destination,
+                "trp_start_date": date_str,
+                "trp_end_date": end_date_str,
+                "trp_start_time": out_time_str,
+                "trp_end_time": in_time_str,
+                "trp_advance": "0.0",
+                "trp_purpose": purpose,
+                "trp_travel_type_id": "2",
+                "trp_remarks": remark
+            }
+        })
+
+
+
+
+elif task == "create_tada_local":
+        custom_prompt = """Extract the following fields from the user message:
+
+- trip_name
+- destination
+- purpose_id
+- remark
+
+Purpose rules:
+- Select ONLY ONE purpose_id from the list below based on the user’s intent.
+- Use the closest matching purpose.
+- If no reasonable match exists, return purpose_id as an empty string "".
+
+Purpose ID mapping:
+- 58 → Visit
+- 59 → Re-Visit
+- 60 → Meeting with client
+- 63 → Meeting
+- 76 → Parts Campaign
+- 77 → Customer Visit for payment collection
+- 78 → Customer Visit for parts Enquiry
+- 79 → Branch Visit
+- 80 → OEM Training or Meeting
+
+Rules:
+1. Output ONLY a valid JSON object.
+2. If a field is missing, return it as an empty string "".
+3. Do not add explanations or extra text.
+4. Detect fields only based on the user's text.
+
+Output JSON format:
+{
+  "trip_name": "",
+  "destination": "",
+  "purpose_id": "",
+  "remark": ""
+}
+"""
+        
+        intent, confidence, reason, destination, leave_category, trip_name, purpose, remark = intent_model_call(msg, custom_prompt)
+        print(f"time: ---- {datetime_info}")
+        dt_info = datetime_info
+        date_str = dt_info.get("start_date")
+        end_date_str = dt_info.get("end_date")
+        out_time_str = dt_info.get("start_time")
+        in_time_str = dt_info.get("end_time")
+        print("=" * 50)
+        print("destination:--- ", destination)
+        print("trip name:---- ", trip_name)
+        print("purpose:---- ", purpose)
+        
+        print("remark: -----", remark)
+
+        return JsonResponse({
+            "reply_type": "create_local_travel_request",
+            "reply": "Please fill the travel request form below.",
+            "suggested": {
+                "client": trip_name,
+                "date": date_str,
+                "trp_start_time": out_time_str,
+                "trp_end_time": in_time_str,
+                "trp_advance": "0.0",
+                "trp_purpose": purpose,
+                "travel_type_id": "58",
+                "remark": remark
+            }
+        })
+
+
+# ====================================================

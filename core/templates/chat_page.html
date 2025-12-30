@@ -2437,6 +2437,8 @@
             box.scrollTop = box.scrollHeight;
         }
 
+
+
         /* ---- renderCreateTadaForm (with start/end time fields + defaults) ---- */
         function renderCreateTadaForm(data) {
             // remove previous instance if present
@@ -2508,6 +2510,8 @@
           <label class="small-label">Travel type</label>
           <select id="trp_travel_type_bot" class="compact-select"><option>Loading...</option></select>
         </div>
+
+
 
         <div class="full">
           <label class="small-label">Remarks (optional)</label>
@@ -2807,6 +2811,357 @@
             renderCreateTadaForm(data || {});
         }
 
+
+//    =========================================================================================tada local form
+
+
+                /* =========================================================
+        SHOW LOCAL TRAVEL FORM
+        ========================================================= */
+        function showLocalTravelForm(data) {
+            const staticCard = document.getElementById("localTravelCreateCard");
+            if (staticCard) staticCard.style.display = "none";
+            renderLocalTravelForm(data || {});
+        }
+
+        /* =========================================================
+        RENDER LOCAL TRAVEL FORM (CHAT CARD)
+        ========================================================= */
+            
+function renderLocalTravelForm(data) {
+
+    console.log("Rendering local travel form with data:", data);
+
+    // Remove old card
+    const prev = document.getElementById("localTravelCreateCardBot");
+    if (prev) prev.remove();
+
+    const box = document.getElementById("chatMessages");
+    if (!box) return;
+
+    const s = data.suggested || {};
+
+    const card = document.createElement("div");
+    card.id = "localTravelCreateCardBot";
+    card.className = "compact-tada-card msg bot";
+
+    card.innerHTML = `
+    <div class="compact-tada-header">
+        <div class="compact-tada-icon">🚌</div>
+        <div>
+            <div class="compact-tada-title">Local Travel Request</div>
+            <div class="compact-tada-sub">Fill local travel details</div>
+        </div>
+    </div>
+
+    <div class="compact-grid">
+        <div>
+            <label class="small-label">Date *</label>
+            <input id="lt_date" type="date" class="compact-input" value="${s.date || ""}">
+        </div>
+
+        <div>
+            <label class="small-label">Call ID / Client</label>
+            <input id="lt_client" class="compact-input" value="${s.client || ""}">
+        </div>
+
+        <div>
+            <label class="small-label">Purpose *</label>
+            <select id="trp_purpose_bot" class="compact-select">
+                <option value="" disabled selected>Loading...</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="small-label">Travel Type *</label>
+            <select id="lt_travel_type" class="compact-select">
+                <option value="" disabled selected>Loading...</option>
+            </select>
+        </div>
+
+        <input id="lt_start_time" type="time" class="compact-input" value="${s.trp_start_time || ""}">
+        <input id="lt_end_time" type="time" class="compact-input" value="${s.trp_end_time || ""}">
+
+        <div class="full">
+            <label class="small-label">Remark *</label>
+            <textarea id="lt_remark" class="compact-textarea">${s.remark || ""}</textarea>
+        </div>
+
+        <div class="full compact-file">
+            <label class="small-label">Attach Document</label>
+            <label for="lt_document" class="btn-ghost">Choose File(s)</label>
+            <input id="lt_document" type="file" multiple hidden>
+            <div id="lt_files_list" class="file-hint"></div>
+        </div>
+    </div>
+
+    <div class="compact-footer">
+        <div class="compact-muted">* Required fields</div>
+        <div class="compact-actions">
+            <button id="ltCancelBtn" class="btn-ghost">Cancel</button>
+            <button id="ltSubmitBtn" class="btn-primary">Submit</button>
+        </div>
+    </div>
+
+    <div id="ltMsg" class="form-msg"></div>
+    `;
+
+    box.appendChild(card);
+    box.scrollTop = box.scrollHeight;
+
+    const $ = id => document.getElementById(id);
+
+    const showMsg = (msg, type="muted") => {
+        const el = $("ltMsg");
+        if (!el) return;
+        el.style.color = type === "error" ? "#f87171" : type === "success" ? "#4ade80" : "#9aa4b2";
+        el.textContent = msg;
+    };
+
+    /* ================= FILE PREVIEW ================= */
+    $("lt_document").addEventListener("change", () => {
+        const files = Array.from($("lt_document").files || []);
+        $("lt_files_list").innerHTML = files.map(f =>
+            `${f.name} (${(f.size/1024).toFixed(1)} KB)`
+        ).join("<br>");
+    });
+
+    /* ================= LOAD PURPOSE ================= */
+    fetch("/api/tada/local/purposes/", { credentials: "same-origin" })
+        .then(r => r.json())
+        .then(json => {
+            const sel = $("trp_purpose_bot");
+            sel.innerHTML = '<option value="" disabled selected>Select purpose</option>';
+
+            if (json.status && Array.isArray(json.result)) {
+                json.result.forEach(p => {
+                    const o = document.createElement("option");
+                    o.value = p.travel_purpose_id;
+                    o.textContent = p.purpose_name;
+                    sel.appendChild(o);
+                });
+
+                if (s.trp_purpose && String(s.trp_purpose).match(/^\d+$/)) {
+                    sel.value = String(s.trp_purpose);
+                }
+            }
+        });
+
+    /* ================= LOAD TRAVEL TYPE ================= */
+    fetch("/api/tada/local/types/", { credentials: "same-origin" })
+        .then(r => r.json())
+        .then(json => {
+            const sel = $("lt_travel_type");
+            sel.innerHTML = '<option value="" disabled selected>Select travel type</option>';
+
+            if (json.status && Array.isArray(json.result)) {
+                json.result.forEach(t => {
+                    const o = document.createElement("option");
+                    o.value = t.travel_id;
+                    o.textContent = t.type?.[0]?.name || `Type ${t.travel_id}`;
+                    sel.appendChild(o);
+                });
+
+                if (s.travel_type_id && String(s.travel_type_id).match(/^\d+$/)) {
+                    sel.value = String(s.travel_type_id);
+                }
+            }
+        });
+
+    /* ================= CANCEL ================= */
+    $("ltCancelBtn").onclick = () => card.remove();
+
+    /* ================= SUBMIT ================= */
+    $("ltSubmitBtn").onclick = async () => {
+
+        if (
+            !$("lt_date").value ||
+            !$("trp_purpose_bot").value ||
+            !$("lt_travel_type").value ||
+            !$("lt_start_time").value ||
+            !$("lt_end_time").value ||
+            !$("lt_remark").value
+        ) {
+            showMsg("Please fill all required fields", "error");
+            return;
+        }
+
+        const fd = new FormData();
+        fd.append("trp_name", $("lt_client").value || "Local Travel");
+        fd.append("trp_call_id", $("lt_client").value || "");
+        fd.append("trp_start_date", $("lt_date").value);
+        fd.append("trp_end_date", $("lt_date").value);
+        fd.append("trp_start_time", $("lt_start_time").value);
+        fd.append("trp_end_time", $("lt_end_time").value);
+        fd.append("trp_destination", "");
+        fd.append("trp_purpose", $("trp_purpose_bot").value);
+        fd.append("trp_travel_type_id", $("lt_travel_type").value);
+        fd.append("trp_remarks", $("lt_remark").value);
+        fd.append("trp_advance", "0.0");
+        fd.append("trp_request_status", "171");
+        fd.append("trp_details", "[]");
+
+        Array.from($("lt_document").files || []).forEach(f =>
+            fd.append("trp_document[]", f, f.name)
+        );
+
+        showMsg("Submitting...");
+
+        const csrf = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+
+        const resp = await fetch("/api/tada/local/create/", {
+            method: "POST",
+            body: fd,
+            credentials: "same-origin",
+            headers: csrf ? { "X-CSRFToken": csrf } : {}
+        });
+
+        const json = await resp.json();
+
+        if (!json.status) {
+            showMsg("Request failed", "error");
+            appendLocalTravelResultCard(json, false);
+            return;
+        }
+
+        showMsg("Local travel request submitted ✓", "success");
+        appendLocalTravelResultCard(json, true);
+        setTimeout(() => card.remove(), 800);
+    };
+}
+
+
+        function appendLocalTravelResultCard(apiResponse, isSuccess = true) {
+            const box = document.getElementById("chatMessages");
+            if (!box) return;
+
+            const card = document.createElement("div");
+            card.className = "msg bot tada-result-card";
+
+            console.log("Local travel response:", apiResponse, "Success:", isSuccess);
+
+            // -------------------------------
+            // ❌ ERROR / FAILED CASE HANDLING
+            // -------------------------------
+
+            if (
+                !isSuccess ||
+                apiResponse?.status !== true
+            ) {
+                // 🔥 Extract best possible error message
+                const errorMessage =
+                    apiResponse?.body?.message ||
+                    apiResponse?.error ||
+                    apiResponse?.message ||
+                    "Unable to create local travel request";
+
+                const errorCode = apiResponse?.status_code
+                    ? ` (Error ${apiResponse.status_code})`
+                    : "";
+
+                card.innerHTML = `
+                    <div class="tada-res-header error">
+                        Local Travel Request Failed${errorCode}
+                    </div>
+
+                    <div class="tada-res-row">
+                        <span>Reason</span>
+                        <b>${errorMessage}</b>
+                    </div>
+                `;
+
+                box.appendChild(card);
+                box.scrollTop = box.scrollHeight;
+                return;
+            }
+
+            // -------------------------------
+            // ✅ SUCCESS CASE
+            // -------------------------------
+            const resultArray = apiResponse?.result?.result;
+
+            if (!Array.isArray(resultArray) || resultArray.length === 0) {
+                const errorMessage =
+                    apiResponse?.body?.message ||
+                    apiResponse?.error ||
+                    apiResponse?.message ||
+                    "Unable to create local travel request";
+
+                    card.innerHTML = `
+                    <div class="tada-res-header error">
+                        Local TADA Request is already submitted for this date
+                    </div>
+                    <div class="tada-res-row">
+                        <span>Reason</span>
+                        <b>Local TADA Request is already submitted for this date</b>
+                        <b>${errorMessage}</b>
+                    </div>
+                `;
+                box.appendChild(card);
+                box.scrollTop = box.scrollHeight;
+                return;
+            }
+
+            const d = resultArray[0];
+
+            const date = d.trp_start_date ?? "-";
+            const client = d.trp_call_id ?? "-";
+            const purpose = d.trp_purpose?.[0]?.name ?? "-";
+            const startTime = d.trp_start_time ?? "-";
+            const endTime = d.trp_end_time ?? "-";
+            const remark = d.trp_remark ?? "-";
+            const requestId = d.trp_unique_id ?? d.trp_id ?? "-";
+            const status = d.trp_request_status?.[0]?.name ?? "Submitted";
+
+            card.innerHTML = `
+                <div class="tada-res-header success">✅ Local Travel Request Created</div>
+
+                <div class="tada-res-row">
+                    <span>Date</span>
+                    <b>${date}</b>
+                </div>
+
+                <div class="tada-res-row">
+                    <span>Client / Call ID</span>
+                    <b>${client}</b>
+                </div>
+
+                <div class="tada-res-row">
+                    <span>Purpose</span>
+                    <b>${purpose}</b>
+                </div>
+
+                <div class="tada-res-row">
+                    <span>Time</span>
+                    <b>${startTime} → ${endTime}</b>
+                </div>
+
+                <div class="tada-res-row">
+                    <span>Remark</span>
+                    <b>${remark}</b>
+                </div>
+
+                <div class="tada-res-row">
+                    <span>Request ID</span>
+                    <b class="hl">${requestId}</b>
+                </div>
+
+                <div class="tada-res-row">
+                    <span>Status</span>
+                    <b class="ok">${status}</b>
+                </div>
+            `;
+
+            box.appendChild(card);
+            box.scrollTop = box.scrollHeight;
+        }
+
+
+
+
+
+
+// ===============================================================================================================================
 
         // ============================================
         // PROFILE DROPDOWN TOGGLE
@@ -3180,6 +3535,17 @@
                 console.log("🚀 Rendering TADA request form with data:", data);
 
                 botReply = data.reply || "Please fill the travel request form below.";
+
+            } else if (data.reply_type === "create_local_travel_request") {
+
+                // Render Local Travel Request form returned by bot
+                // data may include suggested fields
+
+                showLocalTravelForm(data);
+
+                console.log("🚀 Rendering Local Travel request form with data:", data);
+
+                botReply = data.reply_type || "Please fill the local travel request form below.";
 
             } else if (data.reply_type === "announcements_list") {
 
@@ -5118,6 +5484,8 @@
                                 case "travel_plans": renderTravelPlansRequest(msg.data); break;
 
                                 case "create_tada_request": renderCreateTadaForm(msg.data); break;
+
+                                case "create_local_travel_request": renderLocalTravelForm(msg.data); break;
                                 default: appendMessage("bot", msg.text);
                             }
                         } else {
