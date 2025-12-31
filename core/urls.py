@@ -29,6 +29,8 @@ urlpatterns = [
     path("api/tada/types/", views.tada_travel_types, name="tada_travel_types"),
     path("api/tada/create/", views.tada_create_request, name="tada_create_request"),
     
+    
+    path("api/tada/create/local/", views.tada_create_local, name="tada_create_local"),
     # ==================================================================================
     path("filter-plan/", views.filter_plan_list, name="filter_plan_list"),       # GET
     path("filter-plan/post/", views.filter_plan_post, name="filter_plan_post"), # POST proxy

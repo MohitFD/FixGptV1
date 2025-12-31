@@ -129,11 +129,34 @@ def extract_datetime_info(
 
     # --- 5. Parse dates with smart logic ---
     def parse_date_smart(s: str, ref_date: datetime, context_year: Optional[int] = None) -> Optional[datetime.date]:
+        
         """Enhanced date parsing with fallback logic"""
         if not s or not s.strip():
             return None
             
         s_original = s.strip()
+        
+        # --- ADD THIS BLOCK AT THE VERY TOP OF parse_date_smart function ---
+        # Direct DD/MM/YYYY or DD-MM-YYYY handling (Indian format)
+        numeric_date_pattern = r'\b(\d{1,2})[/-](\d{1,2})[/-](\d{4})\b'
+        numeric_matches = re.findall(numeric_date_pattern, s_original)
+
+        if numeric_matches:
+            for day_str, month_str, year_str in numeric_matches:
+                try:
+                    day = int(day_str)
+                    month = int(month_str)
+                    year = int(year_str)
+                    
+                    # Validate reasonable date (day 1-31, month 1-12, year 2000-2100)
+                    if 1 <= day <= 31 and 1 <= month <= 12 and 2000 <= year <= 2100:
+                        parsed_date = datetime(year, month, day).date()
+                        # Prefer future dates
+                        if (parsed_date - ref_date.date()).days >= -365:  # not more than 1 year in past
+                            return parsed_date
+                except ValueError:
+                    continue
+# --- END OF NEW BLOCK ---
         
         # Handle special keywords
         if any(word in s_original for word in ["today", "aaj"]):
