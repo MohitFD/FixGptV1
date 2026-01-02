@@ -863,6 +863,7 @@ def handle_my_leaves(token, employee_id):
         print("📡 My Leaves Body:", r.text)
 
         data = r.json()
+        print("my leaves------- data", data)
         rows = []
         if isinstance(data, list):
             rows = data
@@ -889,6 +890,8 @@ def handle_my_leaves(token, employee_id):
                     "status_name": status_info.get("name") or "Requested",
                     "status_color": (status_info.get("other") or [{}])[0].get("color"),
                 })
+
+            print("my------------------leaves", my_leaves)
 
             return JsonResponse({
                 "reply_type": "my_leaves",
@@ -4462,6 +4465,9 @@ def chat_api(request):
    
 #     return JsonResponse(payload)
 # ===================================================
+
+
+
 
 
 # #   =============      testing code   ===================================  
