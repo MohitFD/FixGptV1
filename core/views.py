@@ -8,8 +8,8 @@ from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.views.decorators.http import require_POST, require_http_methods, require_GET, require_POST
 from collections import defaultdict
 # Core imports for intent classification and response generation
-from core.model_inference2 import model_response
-from core.phi3_inference_v3 import intent_model_call
+# from core.model_inference2 import model_response
+# from core.phi3_inference_v3 import intent_model_call
 from django.conf import settings
 from core.extract_date_time import extract_datetime_info
 from django.utils import timezone
@@ -53,10 +53,17 @@ TA_DA_APPROVAL_CHECK_URL = "https://dev.fixhr.app/api/admin/approval/approval_ch
 
 ANNOUNCEMENT_URL = "http://dev.fixhr.app/api/admin/announcement/sent" 
 
-
+# ==============================  UAT   urls ==============================
 COMPOFF_APPROVAL_LIST_URL = "http://192.168.1.53/api/admin/attendance/daily_approval_list"
 COMPOFF_APPROVAL_STATUS_URL ="http://192.168.1.53/api/admin/approval/approval_check"
 COMPOFF_APPROVAL_URL = "http://192.168.1.53/api/admin/approval/approval_handler"
+
+
+# LEAVE_LIST_URL = "http://192.168.1.53/api/admin/attendance/get_leave_list_for_approval"
+# LEAVE_BALANCE_URL = "http://192.168.1.53/api/admin/attendance/get-leave-balance"
+# LEAVE_APPLY_URL = "http://192.168.1.53/api/admin/attendance/employee_leave"
+
+# ================================================================================
 
 # ---------------- Logging ----------------
 logger = logging.getLogger(__name__)
@@ -769,31 +776,63 @@ def handle_apply_leave(reason,leave_category, msg, token, datetime_info=None):
         return f"Error while applying leave: {str(e)}"
 
 
+
 def handle_pending_leaves(token, role_name):
     try:
-        headers = {"Accept": "application/json", "authorization": f"Bearer {token}"}
+        print("==================================")
+
+        headers = {
+            "Accept": "application/json",
+            "authorization": f"Bearer {token}"
+        }
         params = {"page": 1, "limit": 10}
-        r = requests.get(LEAVE_LIST_URL, headers=headers, params=params, timeout=15)
+
+        r = requests.get(
+            LEAVE_LIST_URL,
+            headers=headers,
+            params=params,
+            timeout=15,
+            verify=False  # only if self-signed SSL
+        )
+
         data = r.json()
-        rows = data.get("result", {}).get("data", [])
         print("leaves data", data)
+
+        # 🔥 SAFE parsing
+        result = data.get("result")
+
+        if isinstance(result, dict):
+            rows = result.get("data", [])
+        elif isinstance(result, list):
+            rows = result
+        else:
+            rows = []
 
         if rows:
             leave_cards = []
+
             for lv in rows:
                 status_info = (lv.get("leave_status") or [{}])[0]
+
                 leave_cards.append({
                     "leave_id": lv.get("leave_id"),
                     "emp_name": lv.get("emp_name"),
                     "start_date": lv.get("start_date"),
                     "end_date": lv.get("end_date"),
                     "reason": lv.get("reason"),
-                    "leave_type": lv.get("leave_category", [{}])[0].get("category", {}).get("name", "Unknown"),
+                    "leave_type": (
+                        lv.get("leave_category", [{}])[0]
+                        .get("category", {})
+                        .get("name", "Unknown")
+                    ),
                     "emp_d_id": lv.get("emp_d_id"),
                     "module_id": lv.get("leave_am_id"),
                     "master_module_id": lv.get("leave_module_id"),
                     "status_name": status_info.get("name"),
-                    "status_color": (status_info.get("other") or [{}])[0].get("color"),
+                    "status_color": (
+                        (status_info.get("other") or [{}])[0]
+                        .get("color")
+                    ),
                 })
 
             return JsonResponse({
@@ -802,10 +841,18 @@ def handle_pending_leaves(token, role_name):
                 "leaves": leave_cards,
                 "can_approve": (role_name or "") != "Employee",
             })
-        return "✅ No pending leave approvals."
-    except Exception as e:
-        return f"Error fetching pending leaves: {str(e)}"
 
+        return JsonResponse({
+            "reply_type": "text",
+            "reply": "✅ No pending leave approvals."
+        })
+
+    except Exception as e:
+        print("Leave error:", e)
+        return JsonResponse({
+            "reply_type": "error",
+            "reply": f"❌ Error fetching pending leaves: {str(e)}"
+        }, status=500)
 
 def handle_my_leaves(token, employee_id):
     try:
@@ -4103,324 +4150,338 @@ def chat_api(request):
     # -------------------------------
     # 🔥 Guest User Restriction Logic
     # # -------------------------------
-    if not is_logged_in:
-        if intent != "general":  
-            return JsonResponse({
-                "reply": "⚠️ Please login to access HR features like leave, attendance, payslip, gatepass & approvals.",
-                "reply_type": "text_only"
-            })
+#     if not is_logged_in:
+#         if intent != "general":  
+#             return JsonResponse({
+#                 "reply": "⚠️ Please login to access HR features like leave, attendance, payslip, gatepass & approvals.",
+#                 "reply_type": "text_only"
+#             })
 
     
-    # 1) Classify intent using phi3_inference_v3
-    classification = classify_message(msg)
-    print(f"classification =============== : {classification}")
-    intent = classification.get("intent") or "general"
-    # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-    reason = classification.get("reason") or "other"
-    destination = classification.get("destination") or "local"
-    leave_category = classification.get("leave_category") or "unpaid leave"
-    print(f"%%%%%%%%%%%%%%%%%%%%%%%%% {reason}, {destination}, {leave_category}")
-    # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-    lang = classification.get("language", "en")
-    confidence = classification.get("confidence", 0.0)
+#     # 1) Classify intent using phi3_inference_v3
+#     classification = classify_message(msg)
+#     print(f"classification =============== : {classification}")
+#     intent = classification.get("intent") or "general"
+#     # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+#     reason = classification.get("reason") or "other"
+#     destination = classification.get("destination") or "local"
+#     leave_category = classification.get("leave_category") or "unpaid leave"
+#     print(f"%%%%%%%%%%%%%%%%%%%%%%%%% {reason}, {destination}, {leave_category}")
+#     # &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+#     lang = classification.get("language", "en")
+#     confidence = classification.get("confidence", 0.0)
     
-    print("🤖 Phi-3 Intent →", classification)
+#     print("🤖 Phi-3 Intent →", classification)
     
-    # 2) If general intent, use model_inference2.py for response
-    if intent == "general":
-        reply = model_response(msg) or handle_general_chat(msg, lang)
-        return JsonResponse({
-            "reply": reply,
-            "intent": intent,
-            "confidence": confidence,
-            "datetime_info": None,
-        })
+#     # 2) If general intent, use model_inference2.py for response
+#     if intent == "general":
+#         reply = model_response(msg) or handle_general_chat(msg, lang)
+#         return JsonResponse({
+#             "reply": reply,
+#             "intent": intent,
+#             "confidence": confidence,
+#             "datetime_info": None,
+#         })
     
-    # 3) Extract datetime info using extract_date_time.py
-    datetime_info = extract_datetime_info(msg)
-    decision = build_decision_context(msg, classification, datetime_info)
-    task = decision.get("task") or "general"
-    lang = decision.get("language", lang)
+#     # 3) Extract datetime info using extract_date_time.py
+#     datetime_info = extract_datetime_info(msg)
+#     decision = build_decision_context(msg, classification, datetime_info)
+#     task = decision.get("task") or "general"
+#     lang = decision.get("language", lang)
     
-    print("📅 DateTime Extract →", datetime_info)
+#     print("📅 DateTime Extract →", datetime_info)
     
-    # 4) Continuation mode: reuse previous slots if user says "also", "again", etc.
-    if any(w in msg.lower() for w in ["bhi", "also", "same", "phir", "again", "next day", "uske baad"]):
-        if chat_memory.get("date"):
-            decision["date"] = chat_memory["date"]
-        if chat_memory.get("leave_type"):
-            decision["leave_type"] = chat_memory["leave_type"]
-        if chat_memory.get("reason"):
-            decision["reason"] = chat_memory["reason"]
+#     # 4) Continuation mode: reuse previous slots if user says "also", "again", etc.
+#     if any(w in msg.lower() for w in ["bhi", "also", "same", "phir", "again", "next day", "uske baad"]):
+#         if chat_memory.get("date"):
+#             decision["date"] = chat_memory["date"]
+#         if chat_memory.get("leave_type"):
+#             decision["leave_type"] = chat_memory["leave_type"]
+#         if chat_memory.get("reason"):
+#             decision["reason"] = chat_memory["reason"]
     
-    meta = {
-        "intent": task,
-        "confidence": confidence,
-        "datetime_info": datetime_info,
-    }
+#     meta = {
+#         "intent": task,
+#         "confidence": confidence,
+#         "datetime_info": datetime_info,
+#     }
 
 
 
-             # ------------------------------------------------------------
-    # 4) CHECK FOR APPROVAL/REJECTION ACTIONS FIRST (BEFORE TASK ROUTING)
-    # ------------------------------------------------------------
-    # Check for compoff approval/rejection - must be checked BEFORE task routing
-    raw_msg = msg.lower().strip()
-    # 🔥 HIGHEST PRIORITY: CompOff Approve / Reject
-    # if "|" in msg_raw and re.match(r"^(approve|reject)\s*compoff\s*\|", msg_raw, re.I):
-    if raw_msg.startswith("approve compoff") or raw_msg.startswith("reject compoff"):
-        print("🔥 DIRECT CompOff command detected")
+#              # ------------------------------------------------------------
+#     # 4) CHECK FOR APPROVAL/REJECTION ACTIONS FIRST (BEFORE TASK ROUTING)
+#     # ------------------------------------------------------------
+#     # Check for compoff approval/rejection - must be checked BEFORE task routing
+#     raw_msg = msg.lower().strip()
+#     # 🔥 HIGHEST PRIORITY: CompOff Approve / Reject
+#     # if "|" in msg_raw and re.match(r"^(approve|reject)\s*compoff\s*\|", msg_raw, re.I):
+#     if raw_msg.startswith("approve compoff") or raw_msg.startswith("reject compoff"):
+#         print("🔥 DIRECT CompOff command detected")
 
-        # ✅ CLEAN ORIGINAL MESSAGE (NOT LOWERCASED)
-        msg_clean = re.sub(
-            r"^(approve|reject)\s*compoff\s*\|",
-            r"\1|",
-            raw_msg,
-            flags=re.IGNORECASE
-        )
+#         # ✅ CLEAN ORIGINAL MESSAGE (NOT LOWERCASED)
+#         msg_clean = re.sub(
+#             r"^(approve|reject)\s*compoff\s*\|",
+#             r"\1|",
+#             raw_msg,
+#             flags=re.IGNORECASE
+#         )
 
-        print(f"🔥 Normalized CompOff message: {msg_clean}")
+#         print(f"🔥 Normalized CompOff message: {msg_clean}")
 
-        return handle_comp_off_approval(msg_clean, token)
+#         return handle_comp_off_approval(msg_clean, token)
     
-    # 5) Handle approval commands (high priority) - use handle_leave_approval=======================================================
-    raw_msg = msg.lower().strip()
-    if raw_msg.startswith("approve leave") or raw_msg.startswith("reject leave"):
-        result = handle_leave_approval(msg, token)
-        if isinstance(result, JsonResponse):
-            return result
-        return JsonResponse({"reply": result})
+#     # 5) Handle approval commands (high priority) - use handle_leave_approval=======================================================
+#     raw_msg = msg.lower().strip()
+#     if raw_msg.startswith("approve leave") or raw_msg.startswith("reject leave"):
+#         result = handle_leave_approval(msg, token)
+#         if isinstance(result, JsonResponse):
+#             return result
+#         return JsonResponse({"reply": result})
     
-    if raw_msg.startswith("approve gatepass") or raw_msg.startswith("reject gatepass"):
-        result = handle_gatepass_approval(msg, token)
-        return JsonResponse({"reply": result})
+#     if raw_msg.startswith("approve gatepass") or raw_msg.startswith("reject gatepass"):
+#         result = handle_gatepass_approval(msg, token)
+#         return JsonResponse({"reply": result})
     
-    if raw_msg.startswith("approve missed") or raw_msg.startswith("reject missed"):
-        result = handle_missed_approval(msg, token)
-        return JsonResponse({"reply": result})
+#     if raw_msg.startswith("approve missed") or raw_msg.startswith("reject missed"):
+#         result = handle_missed_approval(msg, token)
+#         return JsonResponse({"reply": result})
     
-    if raw_msg.startswith("approve travel_request") or raw_msg.startswith("reject travel_request"):
-        result = handle_travel_request_approval(msg, token)
-        return JsonResponse({"reply": result})
+#     if raw_msg.startswith("approve travel_request") or raw_msg.startswith("reject travel_request"):
+#         result = handle_travel_request_approval(msg, token)
+#         return JsonResponse({"reply": result})
     
 
-    if raw_msg.startswith("approve tada_claim") or raw_msg.startswith("reject tada_claim"):
-        result = handle_tada_claim_approval(msg, token)
-        return JsonResponse({"reply": result})
+#     if raw_msg.startswith("approve tada_claim") or raw_msg.startswith("reject tada_claim"):
+#         result = handle_tada_claim_approval(msg, token)
+#         return JsonResponse({"reply": result})
 
-    # 6) Handle specific tasks using existing handlers
+#     # 6) Handle specific tasks using existing handlers
 
    
-    # ==================================
+#     # ==================================
 
         
-    if task == "create_tada_outstation":
-        return handle_create_tada_outstation(
-            msg=msg,
-            intent_model_call=intent_model_call,
-            datetime_info=datetime_info
-        )
+#     if task == "create_tada_outstation":
+#         return handle_create_tada_outstation(
+#             msg=msg,
+#             intent_model_call=intent_model_call,
+#             datetime_info=datetime_info
+#         )
 
     
 
-    elif task == "create_tada_local":
-        return handle_create_tada_local(
-            msg=msg,
-            intent_model_call=intent_model_call,
-            datetime_info=datetime_info
-        )
+#     elif task == "create_tada_local":
+#         return handle_create_tada_local(
+#             msg=msg,
+#             intent_model_call=intent_model_call,
+#             datetime_info=datetime_info
+#         )
 
-    elif task == "tada_outstation_claim_list":
-        data = handle_tada_claims(token, status_filter=None, page=1, limit=20)
-        return JsonResponse(data, safe=False)
+#     elif task == "tada_outstation_claim_list":
+#         data = handle_tada_claims(token, status_filter=None, page=1, limit=20)
+#         return JsonResponse(data, safe=False)
 
     
-    elif task == "tada_outstation_request_list":
-        data = handle_travel_requests(token, status_filter=None, page=1, limit=20)
-        return JsonResponse(data, safe=False)
+#     elif task == "tada_outstation_request_list":
+#         data = handle_travel_requests(token, status_filter=None, page=1, limit=20)
+#         return JsonResponse(data, safe=False)
 
-    elif task == "apply_leave":
-        print("entering apply leave")
-        result = handle_apply_leave(reason, leave_category, msg, token, datetime_info)
-        if isinstance(result, JsonResponse):
-            return result
+#     elif task == "apply_leave":
+#         print("entering apply leave")
+#         result = handle_apply_leave(reason, leave_category, msg, token, datetime_info)
+#         if isinstance(result, JsonResponse):
+#             return result
         
-        # Save to memory
-        SESSION_MEMORY[user_id] = {
-            "date": datetime_info.get("start_date", ""),
-            "leave_type": decision.get("leave_type", "full"),
-            "reason": decision.get("reason", "")
-        }
+#         # Save to memory
+#         SESSION_MEMORY[user_id] = {
+#             "date": datetime_info.get("start_date", ""),
+#             "leave_type": decision.get("leave_type", "full"),
+#             "reason": decision.get("reason", "")
+#         }
         
-        payload = {"reply": result}
-        payload.update(meta)
-        return JsonResponse(payload)
+#         payload = {"reply": result}
+#         payload.update(meta)
+#         return JsonResponse(payload)
     
 
-    elif task == "pending_compoff" or task == "compoff_list":
-        filter_date = None
-        filter_month = None
+#     elif task == "pending_compoff" or task == "compoff_list":
+#         filter_date = None
+#         filter_month = None
         
-        msg_lower = msg.lower().strip()
+#         msg_lower = msg.lower().strip()
         
-        # Use extract_datetime_info instead of extract_dates
-        date_info = extract_datetime_info(msg)
+#         # Use extract_datetime_info instead of extract_dates
+#         date_info = extract_datetime_info(msg)
         
-        # Check for "yesterday" specifically (e.g., "compoff list of yesterday")
-        if "yesterday" in msg_lower:
-            yesterday_date = (datetime.now() - timedelta(days=1)).date()
-            filter_date = yesterday_date.strftime("%d %b, %Y")
-            print(f"📅 CompOff List - Yesterday filter: {filter_date}")
-        # Check if it's just "compoff list" (no date/month mentioned) - show today
-        elif msg_lower in ["compoff list", "pending compoff", "compoff approval", "compoff list.", "pending compoff.", "compoff approval."]:
-            today_date = datetime.now().date()
-            filter_date = today_date.strftime("%d %b, %Y")
-            print(f"📅 CompOff List - Today filter: {filter_date}")
-        else:
-            # Check if message contains just a month name (e.g., "compoff list of november")
-            month_pattern = r"\b(nov|november|dec|december|jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|september|oct|october)\s*(?:(\d{4}))?\b"
-            month_match = re.search(month_pattern, msg_lower)
-            if month_match and not re.search(r"\d{1,2}\s+(nov|november|dec|december|jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|september|oct|october)", msg_lower):
-                # Only month name found, not a specific date
-                month_name = month_match.group(1)
-                year = int(month_match.group(2)) if month_match.group(2) else datetime.now().year
+#         # Check for "yesterday" specifically (e.g., "compoff list of yesterday")
+#         if "yesterday" in msg_lower:
+#             yesterday_date = (datetime.now() - timedelta(days=1)).date()
+#             filter_date = yesterday_date.strftime("%d %b, %Y")
+#             print(f"📅 CompOff List - Yesterday filter: {filter_date}")
+#         # Check if it's just "compoff list" (no date/month mentioned) - show today
+#         elif msg_lower in ["compoff list", "pending compoff", "compoff approval", "compoff list.", "pending compoff.", "compoff approval."]:
+#             today_date = datetime.now().date()
+#             filter_date = today_date.strftime("%d %b, %Y")
+#             print(f"📅 CompOff List - Today filter: {filter_date}")
+#         else:
+#             # Check if message contains just a month name (e.g., "compoff list of november")
+#             month_pattern = r"\b(nov|november|dec|december|jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|september|oct|october)\s*(?:(\d{4}))?\b"
+#             month_match = re.search(month_pattern, msg_lower)
+#             if month_match and not re.search(r"\d{1,2}\s+(nov|november|dec|december|jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|september|oct|october)", msg_lower):
+#                 # Only month name found, not a specific date
+#                 month_name = month_match.group(1)
+#                 year = int(month_match.group(2)) if month_match.group(2) else datetime.now().year
                 
-                # Map month name to number
-                month_map = {
-                    "jan": 1, "january": 1, "feb": 2, "february": 2,
-                    "mar": 3, "march": 3, "apr": 4, "april": 4,
-                    "may": 5, "jun": 6, "june": 6, "jul": 7, "july": 7,
-                    "aug": 8, "august": 8, "sep": 9, "september": 9,
-                    "oct": 10, "october": 10, "nov": 11, "november": 11,
-                    "dec": 12, "december": 12
-                }
-                month_num = month_map.get(month_name.lower(), datetime.now().month)
-                filter_month = (month_num, year)
-                print(f"📅 CompOff List - Month filter (from pattern): {calendar.month_name[filter_month[0]]} {filter_month[1]}")
-            else:
-                # Check if there's date information extracted
-                start_date_str = date_info.get("start_date")
-                end_date_str = date_info.get("end_date")
+#                 # Map month name to number
+#                 month_map = {
+#                     "jan": 1, "january": 1, "feb": 2, "february": 2,
+#                     "mar": 3, "march": 3, "apr": 4, "april": 4,
+#                     "may": 5, "jun": 6, "june": 6, "jul": 7, "july": 7,
+#                     "aug": 8, "august": 8, "sep": 9, "september": 9,
+#                     "oct": 10, "october": 10, "nov": 11, "november": 11,
+#                     "dec": 12, "december": 12
+#                 }
+#                 month_num = month_map.get(month_name.lower(), datetime.now().month)
+#                 filter_month = (month_num, year)
+#                 print(f"📅 CompOff List - Month filter (from pattern): {calendar.month_name[filter_month[0]]} {filter_month[1]}")
+#             else:
+#                 # Check if there's date information extracted
+#                 start_date_str = date_info.get("start_date")
+#                 end_date_str = date_info.get("end_date")
                 
-                # Convert ISO date strings to date objects if needed
-                start_date_obj = None
-                end_date_obj = None
+#                 # Convert ISO date strings to date objects if needed
+#                 start_date_obj = None
+#                 end_date_obj = None
                 
-                if start_date_str:
-                    try:
-                        if isinstance(start_date_str, str):
-                            # extract_datetime_info returns ISO format dates (YYYY-MM-DD)
-                            start_date_obj = datetime.fromisoformat(start_date_str).date()
-                        else:
-                            start_date_obj = start_date_str
-                    except Exception as e:
-                        print(f"⚠️ Error parsing start_date_str '{start_date_str}': {e}")
-                        parsed = dateparser.parse(str(start_date_str))
-                        start_date_obj = parsed.date() if parsed else None
+#                 if start_date_str:
+#                     try:
+#                         if isinstance(start_date_str, str):
+#                             # extract_datetime_info returns ISO format dates (YYYY-MM-DD)
+#                             start_date_obj = datetime.fromisoformat(start_date_str).date()
+#                         else:
+#                             start_date_obj = start_date_str
+#                     except Exception as e:
+#                         print(f"⚠️ Error parsing start_date_str '{start_date_str}': {e}")
+#                         parsed = dateparser.parse(str(start_date_str))
+#                         start_date_obj = parsed.date() if parsed else None
                 
-                if end_date_str:
-                    try:
-                        if isinstance(end_date_str, str):
-                            # extract_datetime_info returns ISO format dates (YYYY-MM-DD)
-                            end_date_obj = datetime.fromisoformat(end_date_str).date()
-                        else:
-                            end_date_obj = end_date_str
-                    except Exception as e:
-                        print(f"⚠️ Error parsing end_date_str '{end_date_str}': {e}")
-                        parsed = dateparser.parse(str(end_date_str))
-                        end_date_obj = parsed.date() if parsed else None
+#                 if end_date_str:
+#                     try:
+#                         if isinstance(end_date_str, str):
+#                             # extract_datetime_info returns ISO format dates (YYYY-MM-DD)
+#                             end_date_obj = datetime.fromisoformat(end_date_str).date()
+#                         else:
+#                             end_date_obj = end_date_str
+#                     except Exception as e:
+#                         print(f"⚠️ Error parsing end_date_str '{end_date_str}': {e}")
+#                         parsed = dateparser.parse(str(end_date_str))
+#                         end_date_obj = parsed.date() if parsed else None
                 
-                # Check if it's a specific date (same start and end date, or only start date)
-                if start_date_obj and (not end_date_obj or start_date_obj == end_date_obj):
-                    filter_date = start_date_obj.strftime("%d %b, %Y")
-                    print(f"📅 CompOff List - Specific Date filter: {filter_date}")
-                # Check if it's a month range (different start/end dates in same month)
-                elif start_date_obj and end_date_obj and start_date_obj.month == end_date_obj.month and start_date_obj.year == end_date_obj.year:
-                    filter_month = (start_date_obj.month, start_date_obj.year)
-                    print(f"📅 CompOff List - Month filter (from date range): {calendar.month_name[filter_month[0]]} {filter_month[1]}")
+#                 # Check if it's a specific date (same start and end date, or only start date)
+#                 if start_date_obj and (not end_date_obj or start_date_obj == end_date_obj):
+#                     filter_date = start_date_obj.strftime("%d %b, %Y")
+#                     print(f"📅 CompOff List - Specific Date filter: {filter_date}")
+#                 # Check if it's a month range (different start/end dates in same month)
+#                 elif start_date_obj and end_date_obj and start_date_obj.month == end_date_obj.month and start_date_obj.year == end_date_obj.year:
+#                     filter_month = (start_date_obj.month, start_date_obj.year)
+#                     print(f"📅 CompOff List - Month filter (from date range): {calendar.month_name[filter_month[0]]} {filter_month[1]}")
         
-        return handle_pending_compoff(token, request.session.get("role_name"), filter_date=filter_date, filter_month=filter_month)
+#         return handle_pending_compoff(token, request.session.get("role_name"), filter_date=filter_date, filter_month=filter_month)
     
     
     
-    elif task == "leave_list" or task == "pending_leave":
-        return handle_pending_leaves(token, request.session.get("role_name"))
+#     elif task == "leave_list" or task == "pending_leave":
+#         return handle_pending_leaves(token, request.session.get("role_name"))
     
-    elif task == "apply_gatepass":
-        print("entering apply gatepass")
-        result = handle_apply_gatepass(reason, destination, msg, token, datetime_info)
-        if isinstance(result, JsonResponse):
-            return result
+#     elif task == "apply_gatepass":
+#         print("entering apply gatepass")
+#         result = handle_apply_gatepass(reason, destination, msg, token, datetime_info)
+#         if isinstance(result, JsonResponse):
+#             return result
         
-        payload = {"reply": result}
-        payload.update(meta)
-        return JsonResponse(payload)
+#         payload = {"reply": result}
+#         payload.update(meta)
+#         return JsonResponse(payload)
     
-    elif task == "pending_gatepass" or task == "gatepass_list":
-        return handle_pending_gatepass(token, request.session.get("role_name"))
+#     elif task == "pending_gatepass" or task == "gatepass_list":
+#         return handle_pending_gatepass(token, request.session.get("role_name"))
     
-    elif task == "apply_missed_punch" or task == "apply_miss_punch":
-        print("entering apply missed punch")
-        result = handle_apply_missed_punch(msg, token, datetime_info)
-        if isinstance(result, JsonResponse):
-            return result
+#     elif task == "apply_missed_punch" or task == "apply_miss_punch":
+#         print("entering apply missed punch")
+#         result = handle_apply_missed_punch(msg, token, datetime_info)
+#         if isinstance(result, JsonResponse):
+#             return result
         
-        payload = {"reply": result}
-        payload.update(meta)
-        return JsonResponse(payload)
+#         payload = {"reply": result}
+#         payload.update(meta)
+#         return JsonResponse(payload)
     
-    elif task == "pending_missed_punch" or task == "pending_miss_punch" or task == "misspunch_list":
-        return handle_pending_missed_punch(token, request.session.get("role_name"))
+#     elif task == "pending_missed_punch" or task == "pending_miss_punch" or task == "misspunch_list":
+#         return handle_pending_missed_punch(token, request.session.get("role_name"))
     
-    elif task == "my_missed_punch" or task == "my_miss_punch":
-        return handle_my_missed_punch(token)
+#     elif task == "my_missed_punch" or task == "my_miss_punch":
+#         return handle_my_missed_punch(token)
     
-    elif task == "leave_balance":
-        response = handle_leave_balance(token)
-        if isinstance(response, JsonResponse):
-            return response
-        payload = {"reply": response}
-        payload.update(meta)
-        return JsonResponse(payload)
+#     elif task == "leave_balance":
+#         response = handle_leave_balance(token)
+#         if isinstance(response, JsonResponse):
+#             return response
+#         payload = {"reply": response}
+#         payload.update(meta)
+#         return JsonResponse(payload)
     
-    elif task == "attendance_report":
-        return handle_attendance_report(decision, token, request, msg)
-    elif task == "leave_balance":
-        result = handle_leave_balance(token)
-        return result   
-    elif task == "my_leaves":
-        return handle_my_leaves(token, request.session.get("employee_id"))
-    elif task == "my_missed_punch":
-        return handle_my_missed_punch(token)
-    elif task == "privacy_policy":
-        # return handle_privacy_policy(token)
-        data = handle_privacy_policy(token)
-        return JsonResponse(data, safe=False)
-    elif task == "payslip":
-        # return handle_payslip_policy(token)
-        data = handle_payslip_policy(token)
-        return JsonResponse(data, safe=False)
-    elif task == "holiday_list":
-        holidays = fetch_holidays({"authorization": f"Bearer {token}"})
-        return JsonResponse({
-            "reply_type": "holiday_list",
-            "reply": "📅 Upcoming Holidays",
-            "holidays": holidays
-        })
+#     elif task == "attendance_report":
+#         return handle_attendance_report(decision, token, request, msg)
+#     elif task == "leave_balance":
+#         result = handle_leave_balance(token)
+#         return result   
+#     elif task == "my_leaves":
+#         return handle_my_leaves(token, request.session.get("employee_id"))
+#     elif task == "my_missed_punch":
+#         return handle_my_missed_punch(token)
+#     elif task == "privacy_policy":
+#         # return handle_privacy_policy(token)
+#         data = handle_privacy_policy(token)
+#         return JsonResponse(data, safe=False)
+#     elif task == "payslip":
+#         # return handle_payslip_policy(token)
+#         data = handle_payslip_policy(token)
+#         return JsonResponse(data, safe=False)
+#     elif task == "holiday_list":
+#         holidays = fetch_holidays({"authorization": f"Bearer {token}"})
+#         return JsonResponse({
+#             "reply_type": "holiday_list",
+#             "reply": "📅 Upcoming Holidays",
+#             "holidays": holidays
+#         })
         
-# Fallback to general model response
-    fallback_reply = model_response(msg) or handle_general_chat(msg, lang)
-    payload = {"reply": fallback_reply}
-    payload.update(meta)
+# # Fallback to general model response
+#     fallback_reply = model_response(msg) or handle_general_chat(msg, lang)
+#     payload = {"reply": fallback_reply}
+#     payload.update(meta)
    
-    return JsonResponse(payload)
+#     return JsonResponse(payload)
 # ===================================================
 
 
-
-
-
 # #   =============      testing code   ===================================  
+
+    task = msg.lower().strip()
+    if task == "leave_list" or task == "pending_leave":    ###    for admin ---- all leaves lists
+        print(task)
+        print(token)
+        print(request.session.get("role_name"))
+        return handle_pending_leaves(token, request.session.get("role_name"))
+
+    elif task == "leave_balance":   ## for employee ---- own leave balance
+        result = handle_leave_balance(token)
+        return result 
+
+    elif task == "my_leaves":     ##    for employee ---- own leaves list
+        return handle_my_leaves(token, request.session.get("employee_id"))
+
+ 
+
 
 
 
