@@ -2023,340 +2023,86 @@ def tada_create_request(request):
         err_body = getattr(e.response, "text", str(e)) if hasattr(e, "response") and e.response is not None else str(e)
         logger.exception("Request to FixHR failed: %s", err_body)
         return JsonResponse({"ok": False, "error": "Request to FixHR failed", "body": err_body}, status=502)
-
-# ==================================================local tada form
-
-
-def _fmt_date(value: str) -> str:
-    """
-    Convert frontend date to FixHR expected format
-    Input  : YYYY-MM-DD
-    Output : DD Mon, YYYY
-    Example: 2025-12-29 -> 29 Dec, 2025
-    """
-    if not value:
-        return ""
-
-    try:
-        return datetime.strptime(value, "%Y-%m-%d").strftime("%d %b, %Y")
-    except ValueError:
-        return value  # already formatted or unknown format
-
-
-def _fmt_time(value: str) -> str:
-    """
-    Convert frontend time to FixHR expected format
-    Input  : HH:MM (24h)
-    Output : HH:MM AM/PM
-    Example: 18:00 -> 06:00 PM
-    """
-    if not value:
-        return ""
-
-    try:
-        return datetime.strptime(value, "%H:%M").strftime("%I:%M %p")
-    except ValueError:
-        return value
-
-
-
-
-
-
-def local_fixhr_headers(request):
-    token = (
-        request.session.get("fixhr_token")
-        or request.COOKIES.get("fixhr_token")
-        or request.headers.get("Authorization", "").replace("Bearer ", "")
-    )
-
-    headers = {
-        "Accept": "application/json",
-    }
-
-    if token:
-        headers["authorization"] = f"Bearer {token}"
-
-    return headers
-
-
-@require_GET
-def local_tada_travel_types(request):
-    """
-    Proxy GET -> FixHR
-    GET /api/admin/tada/travel_type
-
-    Returns:
-    {
-        "status": true,
-        "result": [...]
-    }
-    """
-
-    url = f"{FIXHR_BASE.rstrip('/')}/api/admin/tada/travel_type"
-
-    try:
-        resp = requests.get(
-            url,
-            headers=local_fixhr_headers(request),  # Authorization header
-            timeout=15
-        )
-
-        # Raise for 4xx / 5xx
-        resp.raise_for_status()
-
-        payload = resp.json()
-
-        # FixHR returns { status, result }
-        result = payload.get("result", [])
-
-        return JsonResponse(
-            {
-                "status": True,
-                "result": result
-            }
-        )
-
-    except ValueError:
-        # Upstream returned non-JSON (HTML error page etc.)
-        body = resp.text if 'resp' in locals() else "No response body"
-        logger.error("tada_travel_types: non-JSON response: %s", body[:1000])
-
-        return JsonResponse(
-            {
-                "status": False,
-                "error": "Upstream returned non-JSON response"
-            },
-            status=502
-        )
-
-    except requests.RequestException as e:
-        body = (
-            e.response.text
-            if hasattr(e, "response") and e.response is not None
-            else str(e)
-        )
-        logger.exception("tada_travel_types request failed: %s", body)
-
-        return JsonResponse(
-            {
-                "status": False,
-                "error": "Failed to fetch travel types"
-            },
-            status=502
-        )
-
-@require_GET
-def local_tada_purposes(request):
-    """
-    Proxy GET -> FixHR
-    GET /api/admin/tada/travel_purpose_list
-
-    Returns:
-    {
-        "status": true,
-        "result": [...]
-    }
-    """
-
-    url = f"{FIXHR_BASE.rstrip('/')}/api/admin/tada/travel_purpose_list"
-
-    try:
-        resp = requests.get(
-            url,
-            headers=local_fixhr_headers(request),  # must include Authorization
-            timeout=15
-        )
-
-        # Raise for HTTP 4xx / 5xx
-        resp.raise_for_status()
-
-        # Parse JSON from FixHR
-        payload = resp.json()
-
-        # FixHR usually returns { status: true, result: [...] }
-        result = payload.get("result", [])
-
-        return JsonResponse(
-            {
-                "status": True,
-                "result": result
-            }
-        )
-
-    except ValueError:
-        # FixHR returned non-JSON (HTML error page etc.)
-        body = resp.text if 'resp' in locals() else "No response body"
-        logger.error("tada_purposes: non-JSON response: %s", body[:1000])
-
-        return JsonResponse(
-            {
-                "status": False,
-                "error": "Upstream returned non-JSON response"
-            },
-            status=502
-        )
-
-    except requests.RequestException as e:
-        body = (
-            e.response.text
-            if hasattr(e, "response") and e.response is not None
-            else str(e)
-        )
-        logger.exception("tada_purposes request failed: %s", body)
-
-        return JsonResponse(
-            {
-                "status": False,
-                "error": "Failed to fetch travel purposes"
-            },
-            status=502
-        )
-
-
-
-def _fmt_date_fixhr(d):
-    """
-    Convert YYYY-MM-DD → 'DD Mon, YYYY'
-    Example: 2026-01-20 → 20 Jan, 2026
-    """
-    try:
-        return datetime.strptime(d, "%Y-%m-%d").strftime("%d %b, %Y")
-    except Exception:
-        return ""
-
-def _fmt_time_fixhr(t):
-    """
-    Convert HH:mm → 'hh:mm AM/PM'
-    Example: 17:49 → 05:49 PM
-    """
-    try:
-        return datetime.strptime(t, "%H:%M").strftime("%I:%M %p")
-    except Exception:
-        return ""
+    
+    
 
 @require_POST
-def local_tada_create_request(request):
+def tada_create_local(request):
     """
-    Accept frontend form and forward to FixHR
-    POST -> /api/admin/tada/travel_details
+    Create LOCAL TADA travel request
     """
+    fields = [
+        "trp_name",
+        "trp_start_date",
+        "trp_start_time",
+        "trp_end_time",
+        "trp_purpose"
+    ]
 
-    logger.debug("POST keys: %s", list(request.POST.keys()))
-    logger.debug("FILES keys: %s", list(request.FILES.keys()))
-
-    # ---------------- RAW INPUT ----------------
-    trp_name = request.POST.get("trp_name", "").strip()
-    trp_call_id = request.POST.get("trp_call_id", "").strip()
-    trp_destination = request.POST.get("trp_destination", "")  # EMPTY OK
-    trp_purpose = request.POST.get("trp_purpose", "").strip()
-    trp_travel_type_id = request.POST.get("trp_travel_type_id", "").strip()
-    trp_advance = request.POST.get("trp_advance", "0.0")
-    trp_remarks = request.POST.get("trp_remarks", "")
-    trp_request_status = request.POST.get("trp_request_status", "171")
-    trp_details = request.POST.get("trp_details", "[]")
-
-    # ---------------- FORMAT DATE / TIME (FIXHR FORMAT) ----------------
-    trp_start_date = _fmt_date_fixhr(request.POST.get("trp_start_date", ""))
-    trp_end_date   = _fmt_date_fixhr(request.POST.get("trp_end_date", ""))
-    trp_start_time = _fmt_time_fixhr(request.POST.get("trp_start_time", ""))
-    trp_end_time   = _fmt_time_fixhr(request.POST.get("trp_end_time", ""))
-
-    # ---------------- REQUIRED CHECK ----------------
-    required = {
-        "trp_name": trp_name,
-        "trp_start_date": trp_start_date,
-        "trp_end_date": trp_end_date,
-        "trp_start_time": trp_start_time,
-        "trp_end_time": trp_end_time,
-        "trp_purpose": trp_purpose,
-        "trp_travel_type_id": trp_travel_type_id,
-    }
-
-    missing = [k for k, v in required.items() if not v]
+    missing = [f for f in fields if not request.POST.get(f)]
     if missing:
-        return JsonResponse(
-            {"status": False, "error": "Missing required fields", "missing": missing},
-            status=400
-        )
+        return JsonResponse({
+            "ok": False,
+            "error": "Missing required fields",
+            "missing": missing
+        }, status=400)
 
-    # ---------------- FIXHR PAYLOAD ----------------
-    url = f"{FIXHR_BASE.rstrip('/')}/api/admin/tada/travel_details"
-    headers = local_fixhr_headers(request)
-    print(headers)
+    trp_start_date = request.POST["trp_start_date"]
+    trp_end_date = trp_start_date   # Local = same day
 
     data = {
+        "trp_name": request.POST["trp_name"],
+        "trp_call_id": request.POST.get("trp_call_id", ""),
+        "trp_destination": "Local Travel",
         "trp_start_date": trp_start_date,
         "trp_end_date": trp_end_date,
-        "trp_start_time": trp_start_time,
-        "trp_end_time": trp_end_time,
-        "trp_name": trp_name,
-        "trp_call_id": trp_call_id,
-        "trp_destination": trp_destination,
-        "trp_purpose": str(trp_purpose),
-        "trp_travel_type_id": str(trp_travel_type_id),
-        "trp_advance": str(trp_advance),
-        "trp_remarks": trp_remarks,
-        "trp_request_status": str(trp_request_status),
-        "trp_details": trp_details,
+        "trp_start_time": request.POST["trp_start_time"],
+        "trp_end_time": request.POST["trp_end_time"],
+        "trp_purpose": str(request.POST["trp_purpose"]),
+        "trp_travel_type_id": "57",  # Local ID
+        "trp_advance": request.POST.get("trp_advance", "0.0"),
+        "trp_remarks": request.POST.get("trp_remarks", ""),
+        "trp_request_status": "171",
+        "trp_details": "[]"
     }
 
-    logger.warning("FIXHR PAYLOAD => %s", data)
-
-    # ---------------- FILES ----------------
     files = []
-    if "trp_document[]" in request.FILES:
-        file_list = request.FILES.getlist("trp_document[]")
-    elif "trp_document" in request.FILES:
-        file_list = request.FILES.getlist("trp_document")
-    else:
-        file_list = []
+    for f in request.FILES.getlist("trp_document[]"):
+        files.append(
+            ("trp_document[]", (f.name, f.read(), f.content_type))
+        )
 
-    for f in file_list:
-        files.append((
-            "trp_document[]",
-            (f.name, f.read(), f.content_type or "application/octet-stream")
-        ))
-
-    # ---------------- FORWARD REQUEST ----------------
     try:
+        url = f"{FIXHR_BASE.rstrip('/')}/api/admin/tada/travel_details"
         resp = requests.post(
             url,
-            headers=headers,
+            headers=fixhr_headers(request),
             data=data,
             files=files if files else None,
             timeout=30
         )
 
-        try:
-            body = resp.json()
-        except ValueError:
-            body = resp.text
+        body = resp.json() if resp.headers.get('content-type') == 'application/json' else resp.text
 
         if resp.status_code >= 400:
-            return JsonResponse(
-                {
-                    "status": False,
-                    "error": "FixHR API error",
-                    "status_code": resp.status_code,
-                    "body": body
-                },
-                status=502
-            )
+            return JsonResponse({
+                "ok": False,
+                "error": "FixHR API error",
+                "status": resp.status_code,
+                "body": body
+            }, status=502)
 
-        return JsonResponse({"status": True, "result": body})
+        return JsonResponse({
+            "ok": True,
+            "type": "LOCAL",
+            "result": body
+        })
 
     except requests.RequestException as e:
-        return JsonResponse(
-            {
-                "status": False,
-                "error": "Failed to connect FixHR",
-                "details": str(e)
-            },
-            status=502
-        )
+        return JsonResponse({"ok": False, "error": str(e)}, status=502)
 
-# ======================================================
+
+
 
 def handle_announcement(token):
     """
@@ -3376,6 +3122,44 @@ def login_api(request):
             request.session["phone"] = user.get("phone")  # ⭐ FIXED
             
             request.session["avatar_url"] = user.get("profile_photo")  # ⭐ FIXED
+            
+            raw_photo = user.get("profile_photo") or ""
+
+
+
+            # Clean duplicates like: "uploads/employee_profile/https://...."
+
+            if "http" in raw_photo:
+
+                parts = raw_photo.split("http")
+
+                # यदि दो http मिले → दूसरा सही URL होता है
+
+                if len(parts) > 2:
+
+                    cleaned_url = "http" + parts[-1]
+
+                else:
+
+                    cleaned_url = raw_photo
+
+            else:
+
+                # यदि relative path आया है तो base domain जोड़ दो
+
+                cleaned_url = "https://dev.fixhr.app/" + raw_photo.lstrip("/")
+
+                
+
+            # अगर फिर भी URL invalid हुआ तो default देदो
+
+            if not cleaned_url.startswith("http"):
+
+                cleaned_url = "https://dev.fixhr.app/uploads/default-avatar.png"
+
+
+
+            request.session["avatar_url"] = cleaned_url
             # store role information for UI permissions
             role = (user.get("role") or {})
             request.session["role_name"] = role.get("role_name") or "Employee"
@@ -3917,11 +3701,11 @@ def handle_attendance_report(decision: dict, token: str, request, user_message: 
         return JsonResponse(
             {
                 "reply_type": "attendance",
-                "reply": "⚠️ Attendance report fetch fail ho gaya." if lang == "hi" else f"⚠️ Could not fetch attendance: {e}",
+                "reply": "⚠️ Attendance report fetch fail ho gaya." if user_message == "hi" else f"⚠️ Could not fetch attendance: {e}",
             },
             status=502,
         )
-    
+
     def extract_table(payload):
         if isinstance(payload, list):
             return payload
@@ -4108,6 +3892,987 @@ def chat_history(request):
         "ok": True,
         "history": history
     })
+    
+def handle_tada_claim_list_by_type(token, travel_type_id, page=1, limit=50):
+
+    """
+
+    Fetch TADA claim list for a specific travel type
+
+    travel_type_id: 58 (Local), 59 (Outstation), etc.
+
+    """
+
+    try:
+
+        headers = {
+
+            "Accept": "application/json",
+
+            "authorization": f"Bearer {token}",
+
+        }
+
+
+
+        params = {
+
+            "page": page,
+
+            "limit": limit,
+
+        }
+
+
+
+        url = f"https://dev.fixhr.app/api/admin/tada/claim_list/{travel_type_id}"
+
+
+
+        r = requests.get(
+
+            url,
+
+            headers=headers,
+
+            params=params,
+
+            timeout=15,
+
+        )
+
+
+
+        print(f"📡 TADA Claim List (Type {travel_type_id}) Status:", r.status_code)
+
+        print(f"📡 TADA Claim List Body:", r.text[:2000])
+
+
+
+        if r.status_code != 200:
+
+            return {
+
+                "reply_type": "bot",
+
+                "reply": f"Unable to fetch TADA claims for travel type {travel_type_id}.",
+
+            }
+
+
+
+        try:
+
+            data = r.json()
+
+        except ValueError:
+
+            return {
+
+                "reply_type": "bot",
+
+                "reply": "Received invalid JSON from TADA service.",
+
+            }
+
+
+
+        if not isinstance(data, dict):
+
+            return {
+
+                "reply_type": "bot",
+
+                "reply": "Unexpected response format from TADA service.",
+
+            }
+
+
+
+        if not data.get("status"):
+
+            return {
+
+                "reply_type": "bot",
+
+                "reply": data.get("message") or "Unable to fetch TADA claims.",
+
+            }
+
+
+
+        result = data.get("result") or {}
+
+        rows = result.get("data") or []
+
+
+
+        if not rows:
+
+            return {
+
+                "reply_type": "bot",
+
+                "reply": f"No TADA claims found for travel type {travel_type_id}.",
+
+            }
+
+
+
+        def to_float(x):
+
+            try:
+
+                return float(x) if x else 0.0
+
+            except Exception:
+
+                return 0.0
+
+
+
+        normalized_claims = []
+
+        total_amount = 0.0
+
+
+
+        for row in rows:
+
+            if not isinstance(row, dict):
+
+                continue
+
+
+
+            # 💰 Amount
+
+            claim_amount = to_float(row.get("tc_amount") or 0)
+
+            total_amount += claim_amount
+
+
+
+            # ✅ FIX: Extract correct status from tc_status[]
+
+            status_name = "Pending"
+
+            tc_status = row.get("tc_status")
+
+            if isinstance(tc_status, list) and tc_status:
+
+                status_name = tc_status[0].get("name") or "Pending"
+
+
+
+            # 🧍 Employee & Trip details
+
+            plan = {}
+
+            if isinstance(row.get("tc_plan_details"), list) and row["tc_plan_details"]:
+
+                plan = row["tc_plan_details"][0]
+
+
+
+            claim_obj = {
+
+                "claim_id": row.get("tc_unique_id"),
+
+                "tc_id": row.get("tc_id"),
+
+                "trp_id": row.get("tc_trp_id"),
+
+                "employee_name": plan.get("trp_emp_name", ""),
+
+                "employee_id": row.get("tc_emp_id", ""),
+
+                "amount": f"{claim_amount:.2f}",
+
+                "status": status_name,  # ✅ FIXED
+
+                "travel_type": plan.get("trp_pttt_name", ""),
+
+                "from_date": plan.get("trp_start_date"),
+
+                "to_date": plan.get("trp_end_date"),
+
+                "created_at": row.get("tc_created_at"),
+
+                "raw": row,  # keep full raw for debugging / future use
+
+            }
+
+
+
+            normalized_claims.append(claim_obj)
+
+
+
+        summary = {
+
+            "total_claims": len(normalized_claims),
+
+            "travel_type_id": travel_type_id,
+
+            "total_amount": f"{total_amount:.2f}",
+
+        }
+
+
+
+        return {
+
+            "reply_type": "tada_claim_list",
+
+            "reply": f"Found {len(normalized_claims)} TADA claim(s) for travel type {travel_type_id}.",
+
+            "summary": summary,
+
+            "claims": normalized_claims,
+
+        }
+
+
+
+    except Exception as e:
+
+        import traceback
+
+        traceback.print_exc()
+
+        return {
+
+            "reply_type": "bot",
+
+            "reply": f"Error fetching TADA claims: {e}",
+
+        }
+
+import requests
+
+def handle_tada_claim_list_local(token, page=1, limit=50):
+    """
+    Fetch TADA claim list for LOCAL travel type
+    travel_type_id = 58
+    """
+
+    try:
+        headers = {
+            "Accept": "application/json",
+            "authorization": f"Bearer {token}",
+        }
+
+        params = {
+            "page": page,
+            "limit": limit,
+        }
+
+        travel_type_id = 58
+        url = f"https://dev.fixhr.app/api/admin/tada/claim_list/{travel_type_id}"
+
+        r = requests.get(
+            url,
+            headers=headers,
+            params=params,
+            timeout=15,
+        )
+
+        print("📡 Local TADA Claim Status:", r.status_code)
+        print("📡 Local TADA Claim Body:", r.text[:2000])
+
+        if r.status_code != 200:
+            return {
+                "reply_type": "bot",
+                "reply": "Unable to fetch Local TADA claims.",
+            }
+
+        try:
+            data = r.json()
+        except ValueError:
+            return {
+                "reply_type": "bot",
+                "reply": "Invalid JSON received from Local TADA service.",
+            }
+
+        if not isinstance(data, dict) or not data.get("status"):
+            return {
+                "reply_type": "bot",
+                "reply": data.get("message", "Unable to fetch Local TADA claims."),
+            }
+
+        result = data.get("result", {})
+        rows = result.get("data", [])
+
+        if not rows:
+            return {
+                "reply_type": "bot",
+                "reply": "No Local TADA claims found.",
+            }
+
+        def to_float(val):
+            try:
+                return float(val) if val else 0.0
+            except Exception:
+                return 0.0
+
+        normalized_claims = []
+        total_amount = 0.0
+
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+
+            # 💰 Amount
+            claim_amount = to_float(row.get("tc_amount"))
+            total_amount += claim_amount
+
+            # ✅ Status
+            status_name = "Pending"
+            tc_status = row.get("tc_status")
+            if isinstance(tc_status, list) and tc_status:
+                status_name = tc_status[0].get("name", "Pending")
+
+            # 🧍 Plan / Employee Details
+            plan = {}
+            if isinstance(row.get("tc_plan_details"), list) and row["tc_plan_details"]:
+                plan = row["tc_plan_details"][0]
+
+            claim_obj = {
+                "claim_id": row.get("tc_unique_id"),
+                "tc_id": row.get("tc_id"),
+                "trip_id": row.get("tc_trp_id"),
+                "employee_id": row.get("tc_emp_id"),
+                "employee_name": plan.get("trp_emp_name", ""),
+                "amount": f"{claim_amount:.2f}",
+                "status": status_name,
+                "travel_type": "Local",
+                "from_date": plan.get("trp_start_date"),
+                "to_date": plan.get("trp_end_date"),
+                "created_at": row.get("tc_created_at"),
+                "raw": row,  # full response for debugging
+            }
+
+            normalized_claims.append(claim_obj)
+
+        summary = {
+            "total_claims": len(normalized_claims),
+            "travel_type_id": travel_type_id,
+            "total_amount": f"{total_amount:.2f}",
+        }
+
+        return {
+            "reply_type": "tada_local_claim_list",
+            "reply": f"Found {len(normalized_claims)} Local TADA claim(s).",
+            "summary": summary,
+            "claims": normalized_claims,
+        }
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {
+            "reply_type": "bot",
+            "reply": f"Error fetching Local TADA claims: {e}",
+        }
+        
+
+def handle_tada_acceptance_list_by_type(token, travel_type_id):
+
+    """
+
+    Fetch TADA acceptance / approval list for a travel type
+
+    """
+
+    try:
+
+        headers = {
+
+            "Accept": "application/json",
+
+            "authorization": f"Bearer {token}",
+
+        }
+
+
+
+        url = f"https://dev.fixhr.app/api/admin/tada/acceptance-list/{travel_type_id}"
+
+
+
+        r = requests.get(url, headers=headers, timeout=15)
+
+
+
+        print("📡 TADA Acceptance Status:", r.status_code)
+
+        print("📡 TADA Acceptance Body:", r.text[:2000])
+
+
+
+        if r.status_code != 200:
+
+            return {
+
+                "reply_type": "bot",
+
+                "reply": "Unable to fetch TADA acceptance list.",
+
+            }
+
+
+
+        data = r.json()
+
+
+
+        if not data.get("status"):
+
+            return {
+
+                "reply_type": "bot",
+
+                "reply": data.get("message", "Unable to fetch acceptance list."),
+
+            }
+
+
+
+        rows = data.get("result") or []
+
+
+
+        if not rows:
+
+            return {
+
+                "reply_type": "bot",
+
+                "reply": "No TADA acceptance records found.",
+
+            }
+
+
+
+        def to_float(x):
+
+            try:
+
+                return float(x) if x else 0.0
+
+            except Exception:
+
+                return 0.0
+
+
+
+        normalized = []
+
+
+
+        for row in rows:
+
+            # STATUS
+
+            status = "Pending"
+
+            if isinstance(row.get("tc_status"), list) and row["tc_status"]:
+
+                status = row["tc_status"][0].get("name", "Pending")
+
+
+
+            # PLAN DETAILS
+
+            plan = {}
+
+            if isinstance(row.get("tc_plan_details"), list) and row["tc_plan_details"]:
+
+                plan = row["tc_plan_details"][0]
+
+
+
+            claim_amount = to_float(row.get("tc_amount"))
+
+            net_amount = to_float(row.get("net_payable_amount"))
+
+
+
+            normalized.append({
+
+                "claim_id": row.get("tc_unique_id"),
+
+                "tc_id": row.get("tc_id"),
+
+                "employee_name": plan.get("trp_emp_name"),
+
+                "employee_id": row.get("tc_emp_id"),
+
+                "travel_type": plan.get("trp_pttt_name"),
+
+                "trip_name": plan.get("trp_name"),
+
+                "from_date": plan.get("trp_start_date"),
+
+                "to_date": plan.get("trp_end_date"),
+
+                "amount": f"{claim_amount:.2f}",
+
+                "net_amount": f"{net_amount:.2f}",
+
+                "status": status,
+
+                "destination": plan.get("trp_destination"),
+
+                "purpose": (
+
+                    plan.get("trp_purpose", [{}])[0].get("purpose_name")
+
+                    if plan.get("trp_purpose") else None
+
+                ),
+
+                "approval_log": row.get("tc_approval_log", []),
+
+                "deduction_log": row.get("tc_deduction_log", []),
+
+                "next_action": row.get("tc_next_approver_details", {}).get("message"),
+
+                "claim_pdf_url": row.get("claim_pdf_url"),
+
+                "raw": row,
+
+            })
+
+
+
+        return {
+
+            "reply_type": "tada_acceptance_list",
+
+            "reply": f"Found {len(normalized)} TADA acceptance record(s).",
+
+            "acceptance": normalized,
+
+        }
+
+
+
+    except Exception as e:
+
+        import traceback
+
+        traceback.print_exc()
+
+        return {
+
+            "reply_type": "bot",
+
+            "reply": f"Error fetching acceptance list: {e}",
+
+        }
+
+        
+import requests
+
+def handle_tada_acceptance_list_local(token, page=1, limit=50):
+    """
+    Fetch LOCAL TADA acceptance list
+    travel_type_id = 58
+    """
+
+    try:
+        headers = {
+            "Accept": "application/json",
+            "authorization": f"Bearer {token}",
+        }
+
+        params = {
+            "page": page,
+            "limit": limit,
+        }
+
+        travel_type_id = 58
+        url = f"https://dev.fixhr.app/api/admin/tada/acceptance-list/{travel_type_id}"
+
+        r = requests.get(url, headers=headers, params=params, timeout=15)
+
+        print("📡 Local TADA Acceptance Status:", r.status_code)
+        print("📡 Local TADA Acceptance Body:", r.text[:2000])
+
+        if r.status_code != 200:
+            return {
+                "reply_type": "bot",
+                "reply": "Unable to fetch Local TADA acceptance list.",
+            }
+
+        data = r.json()
+        if not data.get("status"):
+            return {
+                "reply_type": "bot",
+                "reply": data.get("message", "No acceptance data found."),
+            }
+
+        rows = data.get("result", [])
+        if not rows:
+            return {
+                "reply_type": "bot",
+                "reply": "No Local TADA acceptance records found.",
+            }
+
+        normalized = []
+
+        for row in rows:
+            plan = {}
+            if row.get("tc_plan_details"):
+                plan = row["tc_plan_details"][0]
+
+            status_name = "Pending"
+            if row.get("tc_status"):
+                status_name = row["tc_status"][0].get("name", "Pending")
+
+            normalized.append({
+                "claim_id": row.get("tc_unique_id"),
+                "tc_id": row.get("tc_id"),
+                "employee_id": row.get("tc_emp_id"),
+                "employee_name": plan.get("trp_emp_name", ""),
+                "amount": row.get("tc_amount", 0),
+                "deduction": row.get("tc_deduction_amount", 0),
+                "net_payable": row.get("net_payable_amount", 0),
+                "status": status_name,
+                "travel_type": plan.get("trp_pttt_name", "Local"),
+                "from_date": plan.get("trp_start_date"),
+                "to_date": plan.get("trp_end_date"),
+                "approved_date": row.get("tc_approved_date"),
+                "claim_pdf_url": row.get("claim_pdf_url"),
+                "raw": row
+            })
+
+        return {
+            "reply_type": "tada_local_acceptance_list",
+            "reply": f"Found {len(normalized)} Local TADA acceptance record(s).",
+            "claims": normalized
+        }
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {
+            "reply_type": "bot",
+            "reply": f"Error fetching acceptance list: {e}",
+        }
+
+        
+
+        
+
+def handle_tada_travel_plan_list_by_type(token, travel_type_id, page=1, limit=10):
+
+    """
+
+    Fetch TADA travel plans by travel type
+
+    """
+
+    try:
+
+        headers = {
+
+            "Accept": "application/json",
+
+            "authorization": f"Bearer {token}",
+
+        }
+
+
+
+        url = f"https://dev.fixhr.app/api/admin/tada/filter-plan"
+
+        params = {
+
+            "page": page,
+
+            "limit": limit,
+
+            "travel_type": travel_type_id,
+
+        }
+
+
+
+        r = requests.post(url, headers=headers, params=params, timeout=15)
+
+
+
+        print("📡 TADA Travel Plan Status:", r.status_code)
+
+        print("📡 TADA Travel Plan Body:", r.text[:2000])
+
+
+
+        if r.status_code != 200:
+
+            return {
+
+                "reply_type": "bot",
+
+                "reply": "Unable to fetch travel plans.",
+
+            }
+
+
+
+        data = r.json()
+
+        if not data.get("status"):
+
+            return {
+
+                "reply_type": "bot",
+
+                "reply": data.get("message", "Unable to fetch travel plans."),
+
+            }
+
+
+
+        result = data.get("result") or {}
+
+        rows = result.get("data") or []
+
+
+
+        if not rows:
+
+            return {
+
+                "reply_type": "bot",
+
+                "reply": "No travel plans found.",
+
+            }
+
+
+
+        normalized = []
+
+
+
+        for row in rows:
+
+            # STATUS
+
+            status = "Pending"
+
+            if isinstance(row.get("trp_request_status"), list) and row["trp_request_status"]:
+
+                status = row["trp_request_status"][0].get("name", "Pending")
+
+
+
+            # TRAVEL TYPE
+
+            travel_type = "-"
+
+            if row.get("trp_pttt_details"):
+
+                travel_type = (
+
+                    row["trp_pttt_details"][0]
+
+                    .get("type", [{}])[0]
+
+                    .get("name", "-")
+
+                )
+
+
+
+            purpose = "-"
+
+            if row.get("trp_purpose"):
+
+                purpose = row["trp_purpose"][0].get("purpose_name", "-")
+
+
+
+            normalized.append({
+
+                "trip_id": row.get("trp_unique_id"),
+
+                "trp_id": row.get("trp_id"),
+
+                "employee_id": row.get("trp_emp_id"),
+
+                "trip_name": row.get("trp_name"),
+
+                "destination": row.get("trp_destination"),
+
+                "travel_type": travel_type,
+
+                "from_date": row.get("trp_start_date"),
+
+                "to_date": row.get("trp_end_date"),
+
+                "start_time": row.get("trp_start_time"),
+
+                "end_time": row.get("trp_end_time"),
+
+                "purpose": purpose,
+
+                "status": status,
+
+                "created_at": row.get("trp_created_at"),
+
+                "next_action": row.get("trp_next_approver_details", {}).get("message"),
+
+                "raw": row,
+
+            })
+
+
+
+        return {
+
+            "reply_type": "tada_travel_plan_list",
+
+            "reply": f"Found {len(normalized)} travel plan(s).",
+
+            "plans": normalized,
+
+            "pagination": result.get("pagination"),
+
+        }
+
+
+
+    except Exception as e:
+
+        import traceback
+
+        traceback.print_exc()
+
+        return {
+
+            "reply_type": "bot",
+
+            "reply": f"Error fetching travel plans: {e}",
+
+        }    
+        
+ ###################################################################local###################################
+import requests
+
+def handle_tada_plan_list_by_type(token, travel_type_id, page=1, limit=10):
+    """
+    Fetch TADA PLAN list for a specific travel type
+    travel_type_id: 58 (Local), 59 (Outstation), etc.
+    """
+
+    try:
+        headers = {
+            "Accept": "application/json",
+            "authorization": f"Bearer {token}",
+        }
+
+        params = {
+            "page": page,
+            "limit": limit,
+            "travel_type": travel_type_id,
+        }
+
+        url = "https://dev.fixhr.app/api/admin/tada/filter-plan"
+
+        r = requests.post(
+            url,
+            headers=headers,
+            params=params,
+            timeout=15,
+        )
+
+        print("📡 TADA PLAN Status:", r.status_code)
+        print("📡 TADA PLAN Body:", r.text[:2000])
+
+        if r.status_code != 200:
+            return {
+                "reply_type": "bot",
+                "reply": "Unable to fetch TADA plans.",
+            }
+
+        data = r.json()
+
+        if not data.get("status"):
+            return {
+                "reply_type": "bot",
+                "reply": data.get("message", "Failed to fetch TADA plans."),
+            }
+
+        result = data.get("result", {})
+        rows = result.get("data", [])
+
+        if not rows:
+            return {
+                "reply_type": "bot",
+                "reply": f"No TADA plans found for travel type {travel_type_id}.",
+            }
+
+        plans = []
+
+        for row in rows:
+            # ✅ Status
+            status_name = "Unknown"
+            status_color = ""
+            if isinstance(row.get("trp_request_status"), list) and row["trp_request_status"]:
+                st = row["trp_request_status"][0]
+                status_name = st.get("name", "Unknown")
+                status_color = st.get("other", [{}])[0].get("color", "")
+
+            # ✅ Purpose
+            purpose = ""
+            if isinstance(row.get("trp_purpose"), list) and row["trp_purpose"]:
+                purpose = row["trp_purpose"][0].get("purpose_name", "")
+
+            plans.append({
+                "trp_id": row.get("trp_id"),
+                "plan_code": row.get("trp_unique_id"),
+                "title": row.get("trp_name"),
+                "employee_id": row.get("trp_emp_id"),
+                "destination": row.get("trp_destination"),
+                "start_date": row.get("trp_start_date"),
+                "end_date": row.get("trp_end_date"),
+                "start_time": row.get("trp_start_time"),
+                "end_time": row.get("trp_end_time"),
+                "purpose": purpose,
+                "da_amount": row.get("trp_da", 0),
+                "claim_amount": row.get("trp_claim_amount", 0),
+                "status": status_name,
+                "status_color": status_color,
+                "is_plan_editable": row.get("is_trp_plan_editable", False),
+                "is_detail_editable": row.get("is_trp_detail_editable", False),
+                "is_expense_editable": row.get("is_trp_expense_editable", False),
+                "is_claimable": row.get("is_trp_claimable", False),
+                "created_at": row.get("trp_created_at"),
+                "raw": row,  # 🔥 keep full data for UI / debugging
+            })
+
+        pagination = result.get("pagination", {})
+
+        return {
+            "reply_type": "tada_plan_list",
+            "reply": f"Found {len(plans)} TADA plan(s) for travel type {travel_type_id}.",
+            "plans": plans,
+            "pagination": pagination,
+        }
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {
+            "reply_type": "bot",
+            "reply": f"Error fetching TADA plans: {e}",
+        }
+       
 
 # ---------------- CHAT API ----------------
 @csrf_exempt
@@ -4457,6 +5222,173 @@ def chat_api(request):
 #             "reply": "📅 Upcoming Holidays",
 #             "holidays": holidays
 #         })
+
+    # task = "tada_claim_list_by_type"
+
+    # if task == "tada_claim_list_by_type":
+
+    #     # Extract travel_type_id from message
+
+    #     # Examples: "show claims for local travel" → 58
+
+    #     #           "show claims for outstation" → 59
+
+        
+
+    #     travel_type_map = {
+
+    #         "local": "58",
+
+    #         "outstation": "59",
+
+    #         "2": "2",  # If user says "type 2"
+
+    #     }
+
+        
+
+    #     travel_type_id = None
+
+    #     msg_lower = msg.lower()
+
+        
+
+    #     for key, value in travel_type_map.items():
+
+    #         if key in msg_lower:
+
+    #             travel_type_id = value
+
+    #             break
+
+        
+
+    #     # Default to outstation if not specified
+
+    #     if not travel_type_id:
+
+    #         travel_type_id = "59"
+
+        
+
+    #     data = handle_tada_claim_list_by_type(token, travel_type_id, page=1, limit=50)
+
+    #     print("=====================================================================================", data)
+
+    #     return JsonResponse(data, safe=False)
+
+    
+
+    
+
+    # task = "tada_acceptance_list_by_type"
+
+
+
+    # if task == "tada_acceptance_list_by_type":
+
+
+
+    #     travel_type_map = {
+
+    #         "local": "58",
+
+    #         "outstation": "59",
+
+    #         "2": "2",
+
+    #     }
+
+
+
+    #     travel_type_id = None
+
+    #     msg_lower = msg.lower()
+
+
+
+    #     for key, value in travel_type_map.items():
+
+    #         if key in msg_lower:
+
+    #             travel_type_id = value
+
+    #             break
+
+
+
+    #     if not travel_type_id:
+
+    #         travel_type_id = "59"  # default outstation
+
+
+
+    #     data = handle_tada_acceptance_list_by_type(token, travel_type_id)
+
+    #     print("=====================================================================================", data)
+
+    #     return JsonResponse(data, safe=False)
+
+    
+
+    
+
+    
+
+    # task = "tada_travel_plan_list_by_type"
+    # if task == "tada_travel_plan_list_by_type":
+
+
+
+    #     travel_type_map = {
+
+    #         "local": "58",
+
+    #         "outstation": "59",
+
+    #         "2": "2",
+
+    #     }
+
+
+
+    #     travel_type_id = None
+
+    #     msg_lower = msg.lower()
+
+
+
+    #     for key, value in travel_type_map.items():
+
+    #         if key in msg_lower:
+
+    #             travel_type_id = value
+
+    #             break
+
+
+
+    #     if not travel_type_id:
+
+    #         travel_type_id = "59"
+
+
+
+    #     data = handle_tada_travel_plan_list_by_type(
+
+    #         token,
+
+    #         travel_type_id,
+
+    #         page=1,
+
+    #         limit=10
+
+    #     )
+
+
+
+    #     return JsonResponse(data, safe=False) 
         
 # # Fallback to general model response
 #     fallback_reply = model_response(msg) or handle_general_chat(msg, lang)
@@ -4496,3 +5428,245 @@ def chat_api(request):
 
 
 
+    #######################################################################################################################
+    
+    # return JsonResponse({
+
+    #     "reply": "general",
+
+    #     "intent": "general",
+
+    #     "confidence": 2.33,
+
+    #     "datetime_info": None,
+
+    # })
+
+    # return fetch_holidays(headers, month=None, year=None)
+
+
+
+    # return JsonResponse({
+
+    #     "reply_type": "holiday_list",
+
+    #     "reply": "📅 Upcoming Holidays",
+
+    #     "holidays": fetch_holidays({"authorization": f"Bearer {token}"})
+
+    # })
+
+    
+
+    # decision = {
+    #     "intent": "attendance",
+    #     "text": msg,
+    #     "language": "hi"  # ya "en"
+    # }
+
+    # return handle_attendance_report(decision, token, request, msg)
+
+    
+
+    # return handle_pending_gatepass(token, request.session.get("role_name"))
+
+    # return handle_pending_missed_punch(token, request.session.get("role_name"))
+
+    # return handle_pending_leaves(token, request.session.get("role_name"))
+
+    
+
+    # return handle_my_missed_punch(token)
+
+    # return handle_my_leaves(token, request.session.get("employee_id"))
+
+    # payload = handle_privacy_policy(token)
+    # return JsonResponse(payload)
+
+    # payload = handle_payslip_policy(token)
+    # return JsonResponse(payload)
+
+
+
+    
+
+    # holidays=fetch_holidays({"authorization": f"Bearer {token}"})
+
+    # return JsonResponse({
+
+    #         "reply_type": "holiday_list",
+
+    #         "reply": "📅 Upcoming Holidays",
+
+    #         "holidays": holidays
+
+    #     })
+
+    
+
+    
+
+    
+
+    # response = handle_leave_balance(token)
+
+    # if isinstance(response, JsonResponse):
+
+    #     return response
+
+    # payload = {"reply": response}
+
+    # # payload.update(meta)
+
+    # return JsonResponse(payload)
+
+# ===================================================
+
+
+
+    # return handle_pending_missed_punch(token, request.session.get("role_name"))
+
+    
+
+    
+
+    # return JsonResponse({
+
+
+
+    #         "reply_type": "create_tada_request",
+
+
+
+    #         "suggested": {
+
+
+
+    #             "trp_name": "time pass" ,
+
+
+
+    #             "trp_destination": "durg",
+
+
+
+    #             "trp_start_date": "date_str",
+
+
+
+    #             "trp_end_date": "end_date_str",
+
+
+
+    #             "trp_start_time": "out_time_str",
+
+
+
+    #             "trp_end_time": "in_time_str",
+
+
+
+    #             "trp_advance": "0.0",
+
+
+
+    #             "trp_purpose": "purpose",
+
+
+
+    #             "trp_travel_type_id": "2",
+
+    #             "trp_remarks": "remark"
+
+    #         }
+
+    #     })
+    
+    
+    
+    
+    
+
+    # task = msg.lower()
+
+    # if task.startswith("create_tada_local"):
+    #     dt_info = extract_datetime_info(msg)
+        
+    #     start_date = dt_info.get("start_date")
+    #     end_date = dt_info.get("end_date") or start_date
+    
+    # if not start_date:
+    #     return JsonResponse({
+    #         "reply": "Date samajh nahi aaya. Please date clearly batao jaise: 03/12/2026"
+    #     })
+    
+    # # Default times if not mentioned
+    # start_time = dt_info.get("start_time") or "09:00"
+    # end_time = dt_info.get("end_time") or "18:00"
+    
+    # return JsonResponse({
+    #     "reply_type": "create_local_tada_request",
+    #     "reply": "यह रहा आपका local travel request form. Details भरकर submit कर दें।",
+    #     "suggested": {
+    #         "trp_name": "Local Travel Request",
+    #         "trp_start_date": start_date,
+    #         "trp_end_date": end_date,
+    #         "trp_start_time": start_time,
+    #         "trp_end_time": end_time,
+    #         "trp_advance": "0.0",
+    #         "trp_purpose": "58",  # Visit
+    #         "trp_remarks": "Requested via chatbot"
+    #     }
+    # })
+    
+    
+    
+    # =========================================
+# TADA TRAVEL PLAN LIST BY TYPE
+# =========================================
+    # task = msg.lower()
+    # if task.startswith ("tada_plan_list_by_type"):
+    #     travel_type_map = {
+    #         "local": "58",
+    #         "outstation": "59",
+    #         "2": "2",
+    #     }
+    #     msg_lower = msg.lower()
+    #     travel_type_id = "59"  # default
+
+    #     for key, value in travel_type_map.items():
+    #         if key in msg_lower:
+    #             travel_type_id = value
+    #             break
+
+    #     data = handle_tada_plan_list_by_type(token, travel_type_id, page=1, limit=10)
+    #     return JsonResponse(data, safe=False)
+    
+    
+    
+    # if (
+    #     "local tada claim" in msg
+    #     or "local tada claims" in msg
+    #     or "local claim list" in msg
+    #     or msg == "local tada"
+    # ):
+    #     data = handle_tada_claim_list_local(
+    #         token=token,
+    #         page=1,
+    #         limit=20
+    #     )
+    #     return JsonResponse(data, safe=False)
+
+    # # =====================================================
+    # # ❌ TEMP FALLBACK
+    # # =====================================================
+    # return JsonResponse({
+    #     "reply_type": "bot",
+    #     "reply": "Command samajh nahi aaya. Try: 'local tada claims'"
+    # })
+    
+    
+    
+    if "local acceptance" in msg or "local tada acceptance" in msg:
+        data = handle_tada_acceptance_list_local(token)
+        return JsonResponse(data, safe=False)

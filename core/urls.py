@@ -32,6 +32,18 @@ urlpatterns = [
     path("api/tada/local/purposes/", views.local_tada_purposes, name="local_tada_purposes"),
     path("api/tada/local/types/", views.local_tada_travel_types, name="local_tada_travel_types"),
     
+    
+    path("api/tada/create/local/", views.tada_create_local, name="tada_create_local"),
+    # ==================================================================================
+    path("filter-plan/", views.filter_plan_list, name="filter_plan_list"),       # GET
+    path("filter-plan/post/", views.filter_plan_post, name="filter_plan_post"), # POST proxy
+    path("claim-list/<int:travel_type_id>/", views.claim_list, name="claim_list"),
+    path("acceptance-list/<int:travel_type_id>/", views.acceptance_list, name="acceptance_list"),
+    path("claim-pdf/<str:token_hash>/", views.download_claim_pdf, name="claim_pdf"),
+    # ==================================================================================
+
+
+
 
 ]
 
