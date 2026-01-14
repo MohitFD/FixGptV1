@@ -2,6 +2,7 @@ import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import json
 import re
+import time
 
 from pathlib import Path
 
@@ -18,78 +19,71 @@ def get_device():
     print(">> [phi3_intent] Using CPU")
     return "cpu"
 
-SYSTEM_PROMPT = """You are an NLU engine for FixHR application. Extract intent and entities from user messages.
 
-CRITICAL RULES:
-1. Output ONLY valid JSON - no explanations, no extra text
-2. Intent "general" = user asking about/explaining something (what is, how to, tell me about)
-3. Specific intent = user wants to DO that action (apply, show, get, approve, reject)
 
-INTENT CATEGORIES:
 
-A. LEAVE MANAGEMENT:
-- "apply_leave" → user wants to apply/request leave (e.g., "I want leave", "apply leave for tomorrow")
-- "my_leaves" → user wants to see their own leaves (e.g., "show my leaves", "my leave history")
-- "leave_list" → user wants to see all leaves (e.g., "show all leaves", "leave requests")
-- "pending_leave" → user wants pending leave requests (e.g., "pending leaves", "leaves to approve")
-- "approve_leave" → user wants to approve leave (e.g., "approve leave", "accept leave request")
-- "reject_leave" → user wants to reject leave (e.g., "reject leave", "deny leave request")
-- "leave_balance" → user wants leave balance (e.g., "how many leaves", "leave balance")
 
-B. ATTENDANCE & PUNCH:
-- "apply_miss_punch" → user wants to apply for missed punch (e.g., "forgot to punch", "mark attendance")
-- "my_missed_punch" → user wants their missed punch records (e.g., "my missed punches")
-- "pending_missed_punch" → pending missed punch requests (e.g., "pending missed punches")
-- "misspunch_list" → all missed punch records (e.g., "show all missed punches")
-- "approve_missed" → approve missed punch (e.g., "approve missed punch")
-- "reject_missed" → reject missed punch (e.g., "reject missed punch")
-- "my_attendance" → user's attendance (e.g., "my attendance", "show my attendance")
-- "attendance_report" → attendance report (e.g., "attendance report", "team attendance")
 
-C. GATE PASS:
-- "apply_gate_pass" → user wants gate pass (e.g., "I need gate pass", "apply gate pass")
-- "my_gatepass" → user's gate passes (e.g., "my gate passes")
-- "gatepass_list" → all gate passes (e.g., "show all gate passes")
-- "pending_gatepass" → pending gate pass requests (e.g., "pending gate passes")
-- "approve_gatepass" → approve gate pass (e.g., "approve gate pass")
-- "reject_gatepass" → reject gate pass (e.g., "reject gate pass")
 
-D. TADA (Travel Allowance & Daily Allowance):
-- "create_tada_outstation" → user wants to create a new outstation TADA request (e.g., "create TADA outstation", "make a travel request outstation",
-    "I want to create a TADA outstation request", "Ek trip banana hai yaar—trip name ‘Office Visit’, destination Mumbai rakh do, 
-    purpose Visit aur remark me likh dena ‘Manager se meeting hai’")
-- "create_tada_local" → user wants to create a new TADA local request (e.g., "create TADA local", "make a local travel request", "apply TADA local", 
-    "I want to create a TADA local request", "generate local travel request")
+SYSTEM_PROMPT = """You are an intent classifier.
 
-E. TADA LOCAL & TADA OUTSTATION
-- "tada_local_claim_list" → user wants to see Local TADA claim approval list
-- "tada_local_request_list" → user wants to see Local TADA request approval list
-- "tada_local_acceptance_list" → user wants to see Local TADA acceptance/approved list
-- "tada_outstation_claim_list" → user wants to see Outstation TADA claim approval list
-- "tada_outstation_request_list" → user wants to see Outstation TADA request approval list
-- "tada_outstation_acceptance_list" → user wants to see Outstation TADA acceptance/approved list
-- "all_tada" → user wants to see complete TADA list (triggered when user message contains: “tada list”, “all tada”, “tada details”, “complete tada”)
+If the user message contains ANY of these words (case-insensitive):
+leave, attendance, miss punch, gate pass, tada, compoff,
+apply, request, show, list, history, pending, approve,
+reject, balance, report, download, claim, payslip, holiday
 
-F. COMPOFF APPROVAL LIST:
-- "compoff_list" → user wants to see CompOff request list
-- "pending_compoff" → user wants to see pending CompOff approval list
+→ intent = "task"
 
-G. OTHER:
-- "payslip" → user wants payslip (e.g., "show payslip", "download salary slip")
-- "holiday_list" → holidays (e.g., "show holidays", "holiday calendar")
-- "privacy_policy" → privacy policy (e.g., "privacy policy", "data policy")
-- "general" → asking questions, explanations, greetings, unclear requests
+Otherwise, if the message is asking for information or explanation
+(what, why, how, explain, kya hai, batao)
 
-Output JSON Schema:
+→ intent = "general"
+
+Rules:
+- Check task keywords FIRST
+- Choose ONE intent only
+- No explanation
+- Output ONLY valid JSON
+
+Output:
 {
-  "intent": "<string>",
-  "confidence": <float>,
-  "reason": "<string | null>",
-  "destination": "<string | null>"
-  "leave_category": "<string | null>"
+  "intent": "<task | general>"
 }
 
-Remember: Output ONLY the JSON object. No markdown, no backticks, no explanation."""
+"""
+
+
+
+
+
+# SYSTEM_PROMPT = """You are an intent classifier.
+
+# Classify the user message into ONLY one intent:
+
+# - "task": 
+#   If the message is related to ANY system action such as:
+#   leave, attendance, miss punch, gate pass, TADA, CompOff,
+#   apply, create, show list, history, pending, approve, reject,
+#   balance, report, download, request, acceptance, claims,
+#   payslip, holiday list, privacy policy, TADA list, show,.
+
+# - "general":
+#   If the message is only asking for information or explanation
+#   (what is, why, how, meaning, details, kya hai, explain, batao, tell me).
+
+# Rules:
+# - Choose one intent only.
+# - No explanation.
+# - Always output valid JSON.
+
+# Output:
+# {
+#   "intent": "<task | general>"
+# }
+# """
+
+
+
 
 
 # ---------------------- MODEL LOADING ----------------------
@@ -231,6 +225,7 @@ def extract_json_fallback(text):
         "reason": "",
         "destination": "",
         "leave_category": "",
+        "action": "",
 
         # NEW FIELDS
         "trip_name": "",
@@ -256,6 +251,10 @@ def extract_json_fallback(text):
     destination_match = re.search(r'"destination"\s*:\s*"([^"]+)"', text)
     if destination_match:
         result["destination"] = destination_match.group(1)
+
+    action_match = re.search(r'"action"\s*:\s*"([^"]+)"', text)
+    if action_match:
+        result["action"] = action_match.group(1)
         
     leave_category = re.search(r'"leave_category"\s*:\s*"([^"]+)"', text)
     if leave_category:
@@ -328,6 +327,7 @@ def extract_fields(raw_output):
 
         reason = data.get("reason", "") or ""
         destination = data.get("destination", "") or ""
+        action = data.get("action", "") or ""
         leave_category = data.get("leave_category", "") or ""
 
         # NEW FIELDS
@@ -335,11 +335,11 @@ def extract_fields(raw_output):
         purpose = data.get("purpose", "") or ""
         remark = data.get("remark", "") or ""
 
-        return intent, confidence, reason, destination, leave_category, trip_name, purpose, remark
+        return intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark
 
     except Exception as e:
         print("Extractor error:", e)
-        return "", 0.0, "", "", "", "", "", ""
+        return "", 0.0, "", "", "", "", "", "", ""
 
 
 print(">> [phi3_intent] Initializing global classifier...")
@@ -353,70 +353,954 @@ def intent_model_call(user_msg, custom_prompt=None):
 
     raw = generate_json(TOKENIZER, MODEL, prompt, DEVICE)
 
-    intent, confidence, reason, destination, leave_category, trip_name, purpose, remark = extract_fields(raw)
-
-    # print(
-    #     "intent, confidence, reason, destination =============== : "
-    #     f"{intent}, {confidence}, {reason}, {destination}"
-    # )
-
-    return intent, confidence, reason, destination, leave_category, trip_name, purpose, remark
+    intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark = extract_fields(raw)
 
 
+    if intent == "general":
+        return intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark
+    elif intent == "task":
+        SYSTEM_PROMP = """You are an intent classifier for FixHR.
 
+Task:
+Identify ONLY the MAIN intent category of the user message.
+Support English, Hindi, and Hinglish.
 
-
-# ---------------------- MAIN LOOP ----------------------
-if __name__ == "__main__":
-    
-
-    print("=== Phi-3 Mini JSON Chat NLU ===")
-
-    while True:
-        user = input("\nYou: ").strip()
-        if user.lower() == "exit":
-            break
-        
-        custom_prompt = """Extract the following fields from the user message:
-
-- trip_name
-- destination
-- purpose
-- remark
+Intents:
+- leave
+- attendance
+- miss_punch
+- gate_pass
+- tada
+- tada_list
+- compoff
+- payslip
+- holiday
+- privacy
+- general
 
 Rules:
-1. Output ONLY a valid JSON object.
-2. If a field is missing, return it as an empty string "".
-3. Do not add explanations or extra text.
-4. Detect fields only based on user's text.
+- Output only JSON
+- One intent only
+- No explanation
+- If unsure, use "general"
 
-Output JSON format:
-{
-  "trip_name": "",
-  "destination": "",
-  "purpose": "",
-  "remark": ""
-}
+Output:
+{"intent":"<intent>"}
 """
 
+        start_time = time.perf_counter()
+        intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark = intent_model_call(user_msg, SYSTEM_PROMP)
+        # ⏱️ END TIMER
+        end_time = time.perf_counter()
+        latency_ms = (end_time - start_time) * 1000
+        print(f"NLU Time Taken:-------------------------------------------------------> middel--> {latency_ms:.2f} ms")
+        
+        if intent == "leave":
+            leave_prompt = """You are an NLU engine for FixHR.
+
+Task:
+Detect ONLY leave-related ACTION intent from the user message.
+Support English, Hindi, and Hinglish.
+
+Rules:
+- Output ONLY valid JSON
+- No explanation, no extra text
+- If message is NOT a leave action, intent = "general"
+
+Leave intents:
+- apply_leave → apply/request leave (chutti chahiye, leave lena hai, apply leave)
+- my_leaves → user’s own leaves (meri leaves, my leave history)
+- leave_list → all leave requests and pending approvals (leave list, sabhi leaves, pending chutti, approve karni wali leaves)
+- leave_balance → remaining leaves (kitni leaves bachi hai, leave balance)
+
+Output format:
+{
+"intent": "<string>",
+"reason": "<string | null>",
+"destination": "leave_management"
+}
+
+"""
+
+            intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark = intent_model_call(
+                user_msg, leave_prompt
+            )
+            return intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark
+
+    
+    
+        elif intent == "attendance":
+            att_prompt = """You are an NLU engine for FixHR application. Extract intent and entities from user messages.
+
+CRITICAL RULES:
+1. Output ONLY valid JSON - no explanations, no extra text
+2. Detect ONLY attendance and punch related action intents
+3. If no intent matches, return intent = "general"
+
+INTENT CATEGORIES:
+
+A. ATTENDANCE & PUNCH:
+- "my_attendance" → user's attendance (e.g., "my attendance", "show my attendance")
+- "attendance_report" → attendance report (e.g., "attendance report", "team attendance")
+
+Output JSON Schema:
+{
+"intent": "<string>"
+}
+
+Remember: Output ONLY the JSON object. No markdown, no backticks, no explanation.
+"""
+
+            intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark = intent_model_call(
+                user_msg, att_prompt
+            )
+            return intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark
 
 
-        intent, confidence, reason, destination, leave_category, trip_name, purpose, remark = intent_model_call(user, custom_prompt)
+        elif intent == "miss_punch":
+            att_prompt = """You are an NLU engine for FixHR application. Extract intent and entities from user messages.
 
-        print("\n" + "=" * 50)
-        print("Intent:", intent)
-        print("Confidence:", confidence)
-        print("Reason:", reason)
-        # print("Destination:", destination)
-        print("leave category: ",leave_category)
-        print("=" * 50)
-        print("destination:--- ", destination)
-        print("trip name:---- ", trip_name)
-        print("purpose:---- ", purpose)
-        print("remark: -----", remark)
+CRITICAL RULES:
+1. Output ONLY valid JSON - no explanations, no extra text
+2. Detect ONLY attendance and punch related action intents
+3. If no intent matches, return intent = "general"
 
-        print("\nRaw AI JSON:")
-        print("\n")
+INTENT CATEGORIES:
+
+A. ATTENDANCE & PUNCH:
+- "apply_miss_punch" → user wants to apply for missed punch (e.g., "forgot to punch", "mark attendance")
+- "my_missed_punch" → user wants their missed punch records (e.g., "my missed punches")
+- "pending_missed_punch" → pending missed punch requests, all missed punch records (e.g., "pending missed punches", "show all missed punches")
+
+Output JSON Schema:
+{
+"intent": "<string>",
+"reason": "<string | null>"
+}
+
+Remember: Output ONLY the JSON object. No markdown, no backticks, no explanation.
+"""
+
+            intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark = intent_model_call(
+                user_msg, att_prompt
+            )
+            return intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark
+
+    
+        elif intent == "gate_pass":
+            gate_prompt = """You are an NLU engine for FixHR application. Extract intent and entities from user messages.
+
+CRITICAL RULES:
+1. Output ONLY valid JSON - no explanations, no extra text
+2. Detect ONLY attendance and punch related action intents
+3. If no intent matches, return intent = "general"
+
+INTENTS:
+
+- "apply_gate_pass" → user wants gate pass (e.g., "I need gate pass", "apply gate pass")
+- "my_gatepass" → user's gate passes (e.g., "my gate passes")
+- "pending_gatepass" → pending gate pass requests or all gate passes (e.g., "pending gate passes", "show all gate passes")
+
+Output JSON Schema:
+{
+"intent": "<string>",
+"reason": "<string | null>",
+"destination": "<string | null>"
+}
+
+Remember: Output ONLY the JSON object. No markdown, no backticks, no explanation.
+"""
+
+            intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark = intent_model_call(
+                user_msg, gate_prompt
+            )
+            return intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark
+
+    
+        elif intent == "tada":
+            tada_prompt = """You are an NLU engine for FixHR application. Extract intent and entities from user messages.
+
+CRITICAL RULES:
+1. Output ONLY valid JSON - no explanations, no extra text
+2. Detect ONLY attendance and punch related action intents
+3. If no intent matches, return intent = "general"
+
+INTENTS:
+
+TADA (Travel Allowance & Daily Allowance):
+- "create_tada_outstation" → user wants to create a new outstation TADA request (e.g., "create TADA outstation", "make a travel request outstation",
+"I want to create a TADA outstation request", "Ek trip banana hai yaar—trip name ‘Office Visit’, destination Mumbai rakh do, 
+purpose Visit aur remark me likh dena ‘Manager se meeting hai’")
+- "create_tada_local" → user wants to create a new TADA local request (e.g., "create TADA local", "make a local travel request", "apply TADA local", 
+"I want to create a TADA local request", "generate local travel request")
+
+Output JSON Schema:
+{
+"intent": "<string>",
+"reason": "<string | null>",
+"destination": "<string | null>"
+}
+
+Remember: Output ONLY the JSON object. No markdown, no backticks, no explanation.
+"""
+
+            intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark = intent_model_call(
+                user_msg, tada_prompt
+            )
+            return intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark
 
 
-        print("hello")
+        elif intent == "tada_list":
+            tada_list_prompt = """You are an NLU engine for FixHR application. Extract intent and entities from user messages.
+
+CRITICAL RULES:
+1. Output ONLY valid JSON - no explanations, no extra text
+2. Detect ONLY attendance and punch related action intents
+3. If no intent matches, return intent = "general"
+
+INTENTS:
+
+TADA LOCAL & TADA OUTSTATION
+- "tada_local_claim_list" → user wants to see Local TADA claim approval list
+- "tada_local_request_list" → user wants to see Local TADA request approval list
+- "tada_local_acceptance_list" → user wants to see Local TADA acceptance/approved list
+- "tada_outstation_claim_list" → user wants to see Outstation TADA claim approval list
+- "tada_outstation_request_list" → user wants to see Outstation TADA request approval list
+- "tada_outstation_acceptance_list" → user wants to see Outstation TADA acceptance/approved list
+- "all_tada" → user wants to see complete TADA list (triggered when user message contains: “tada list”, “all tada”, “tada details”, “complete tada”)
+
+Output JSON Schema:
+{
+"intent": "<string>"
+}
+
+Remember: Output ONLY the JSON object. No markdown, no backticks, no explanation.
+"""
+
+            intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark = intent_model_call(
+                user_msg, tada_list_prompt
+            )
+            return intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark
+    
+        elif intent == "compoff":
+            comp_prompt = """You are an NLU engine for FixHR application. Extract intent and entities from user messages.
+
+CRITICAL RULES:
+1. Output ONLY valid JSON - no explanations, no extra text
+2. Detect ONLY attendance and punch related action intents
+3. If no intent matches, return intent = "general"
+
+INTENTS:
+
+COMPOFF APPROVAL LIST:
+- "compoff_list" → user wants to see CompOff request list
+- "pending_compoff" → user wants to see pending CompOff approval list
+
+Output JSON Schema:
+{
+"intent": "<string>"
+}
+
+Remember: Output ONLY the JSON object. No markdown, no backticks, no explanation.
+"""
+           
+    
+            intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark = intent_model_call(
+                user_msg, comp_prompt
+            )
+            return intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark
+    
+        elif intent == "payslip":
+            payslip_prompt = """You are an NLU engine for FixHR application. Extract intent and entities from user messages.
+
+CRITICAL RULES:
+1. Output ONLY valid JSON - no explanations, no extra text
+2. Detect ONLY attendance and punch related action intents
+3. If no intent matches, return intent = "general"
+
+INTENTS:
+
+- "payslip" → user wants payslip (e.g., "show payslip", "download salary slip")
+
+Output JSON Schema:
+{
+"intent": "<string>"
+}
+
+Remember: Output ONLY the JSON object. No markdown, no backticks, no explanation.
+"""
+
+            intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark = intent_model_call(
+                user_msg, payslip_prompt
+            )
+            return intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark
+    
+        elif intent == "holiday":
+            holiday_prompt = """You are an NLU engine for FixHR application. Extract intent and entities from user messages.
+
+CRITICAL RULES:
+1. Output ONLY valid JSON - no explanations, no extra text
+2. Detect ONLY attendance and punch related action intents
+3. If no intent matches, return intent = "general"
+
+INTENTS:
+
+- "holiday_list" → holidays (e.g., "show holidays", "holiday calendar")
+
+Output JSON Schema:
+{
+"intent": "<string>"
+}
+
+Remember: Output ONLY the JSON object. No markdown, no backticks, no explanation.
+"""
+
+            intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark = intent_model_call(
+                user_msg, holiday_prompt
+            )
+            return intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark
+
+    
+        elif intent == "privacy":
+            privacy_prompt = """You are an NLU engine for FixHR application. Extract intent and entities from user messages.
+
+CRITICAL RULES:
+1. Output ONLY valid JSON - no explanations, no extra text
+2. Detect ONLY attendance and punch related action intents
+3. If no intent matches, return intent = "general"
+
+INTENTS:
+
+- "privacy_policy" → privacy policy (e.g., "privacy policy", "data policy")
+
+Output JSON Schema:
+{
+"intent": "<string>"
+}
+
+Remember: Output ONLY the JSON object. No markdown, no backticks, no explanation.
+"""
+            intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark = intent_model_call(
+                user_msg, privacy_prompt
+            )
+            return intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark
+    
+        else:
+            return intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark
+    else:
+        return intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark
+        
+    
+
+# ======================================================================================================
+
+
+
+
+
+# # ---------------------- MAIN LOOP ----------------------
+# if __name__ == "__main__":
+    
+
+#     print("=== Phi-3 Mini JSON Chat NLU ===")
+
+#     while True:
+#         user = input("\nYou: ").strip()
+#         if user.lower() == "exit":
+#             break
+        
+#         custom_prompt = """You are an intent classifier.
+
+# Classify the user message into ONLY one intent:
+
+# - "task": 
+#   If the message is related to ANY system action such as:
+#   leave, attendance, miss punch, gate pass, TADA, CompOff,
+#   apply, create, show list, history, pending, approve, reject,
+#   balance, report, download, request, acceptance, claims,
+#   payslip, holiday list, privacy policy, TADA list, show me.
+
+# - "general":
+#   If the message is only asking for information or explanation
+#   (what is, why, how, meaning, details, kya hai, explain, batao, tell me).
+
+# Rules:
+# - Choose one intent only.
+# - No explanation.
+# - Always output valid JSON.
+
+# Output:
+# {
+#   "intent": "<task | general>"
+# }
+# """
+
+
+
+#         start_time = time.perf_counter()
+
+#         intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark = intent_model_call(
+#             user, custom_prompt
+#         )
+
+#         # ⏱️ END TIMER
+#         end_time = time.perf_counter()
+
+#         latency_ms = (end_time - start_time) * 1000
+
+#         print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Intent:", intent)
+#         print("Confidence:", confidence)
+#         print(f"NLU Time Taken: {latency_ms:.2f} ms")
+
+#         if intent == "task":
+
+#             SYSTEM_PROMP = """You are an intent classifier for FixHR.
+
+# Task:
+# Identify ONLY the MAIN intent category of the user message.
+# Support English, Hindi, and Hinglish.
+
+# Intents:
+# - leave
+# - attendance
+# - miss_punch
+# - gate_pass
+# - tada
+# - tada_list
+# - compoff
+# - payslip
+# - holiday
+# - privacy
+# - general
+
+# Rules:
+# - Output only JSON
+# - One intent only
+# - No explanation
+# - If unsure, use "general"
+
+# Output:
+# {"intent":"<intent>"}
+# """
+#             start_time = time.perf_counter()
+#             intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark = intent_model_call(user, SYSTEM_PROMP)
+
+#             # ⏱️ END TIMER
+#             end_time = time.perf_counter()
+    
+#             latency_ms = (end_time - start_time) * 1000
+#             print(f"NLU Time Taken: {latency_ms:.2f} ms")
+        
+
+#             print("----------------------->> category : ", intent)
+            
+
+#             if intent == "leave":
+#                 leave_prompt = """You are an NLU engine for FixHR.
+
+# Task:
+# Detect ONLY leave-related ACTION intent from the user message.
+# Support English, Hindi, and Hinglish.
+
+# Rules:
+# - Output ONLY valid JSON
+# - No explanation, no extra text
+# - If message is NOT a leave action, intent = "general"
+
+# Leave intents:
+# - apply_leave → apply/request leave (chutti chahiye, leave lena hai, apply leave)
+# - my_leaves → user’s own leaves (meri leaves, my leave history)
+# - leave_list → all leave requests (leave list, sabhi leaves)
+# - pending_leave → pending approvals (pending chutti, approve karni wali leaves)
+# - leave_balance → remaining leaves (kitni leaves bachi hai, leave balance)
+
+# Output format:
+# {
+#   "intent": "<string>",
+#   "reason": "<string | null>",
+#   "destination": "leave_management",
+#   "action": "<string | null>"
+# }
+
+# """
+#                 start_time = time.perf_counter()
+        
+#                 intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark = intent_model_call(
+#                     user, leave_prompt
+#                 )
+        
+#                 # ⏱️ END TIMER
+#                 end_time = time.perf_counter()
+        
+#                 latency_ms = (end_time - start_time) * 1000
+        
+#                 print(f"NLU Time Taken: {latency_ms:.2f} ms")
+#                 print("\n" + "=" * 50)
+#                 print("Intent:", intent)
+#                 print("Confidence:", confidence)
+#                 print("Reason:", reason)
+#                 # print("Destination:", destination)
+#                 print("leave category: ",leave_category)
+#                 print("=" * 50)
+#                 print("destination:--- ", destination)
+#                 print("trip name:---- ", trip_name)
+#                 print("purpose:---- ", purpose)
+#                 print("remark: -----", remark)
+#                 print("action: -----", action)
+        
+#                 print("\nRaw AI JSON:")
+#                 print("\n")
+#                 print("hello")
+
+        
+        
+#             elif intent == "attendance":
+#                 att_prompt = """You are an NLU engine for FixHR application. Extract intent and entities from user messages.
+
+# CRITICAL RULES:
+# 1. Output ONLY valid JSON - no explanations, no extra text
+# 2. Detect ONLY attendance and punch related action intents
+# 3. If no intent matches, return intent = "general"
+
+# INTENT CATEGORIES:
+
+# A. ATTENDANCE & PUNCH:
+# - "apply_miss_punch" → user wants to apply for missed punch (e.g., "forgot to punch", "mark attendance")
+# - "my_missed_punch" → user wants their missed punch records (e.g., "my missed punches")
+# - "pending_missed_punch" → pending missed punch requests (e.g., "pending missed punches")
+# - "misspunch_list" → all missed punch records (e.g., "show all missed punches")
+# - "my_attendance" → user's attendance (e.g., "my attendance", "show my attendance")
+# - "attendance_report" → attendance report (e.g., "attendance report", "team attendance")
+
+# Output JSON Schema:
+# {
+#   "intent": "<string>",
+#   "reason": "<string | null>",
+#   "destination": "<string | null>",
+#   "action": "<string | null>"
+# }
+
+# Remember: Output ONLY the JSON object. No markdown, no backticks, no explanation.
+# """
+#                 start_time = time.perf_counter()
+        
+#                 intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark = intent_model_call(
+#                     user, att_prompt
+#                 )
+        
+#                 # ⏱️ END TIMER
+#                 end_time = time.perf_counter()
+        
+#                 latency_ms = (end_time - start_time) * 1000
+        
+#                 print(f"NLU Time Taken: {latency_ms:.2f} ms")
+
+#                 print("\n" + "=" * 50)
+#                 print("Intent:", intent)
+#                 print("Confidence:", confidence)
+#                 print("Reason:", reason)
+#                 # print("Destination:", destination)
+#                 print("leave category: ",leave_category)
+#                 print("=" * 50)
+#                 print("destination:--- ", destination)
+#                 print("trip name:---- ", trip_name)
+#                 print("purpose:---- ", purpose)
+#                 print("remark: -----", remark)
+#                 print("action: -----", action)
+        
+#                 print("\nRaw AI JSON:")
+#                 print("\n")
+#                 print("hello")
+        
+#             elif intent == "gate_pass":
+#                 gate_prompt = """You are an NLU engine for FixHR application. Extract intent and entities from user messages.
+
+# CRITICAL RULES:
+# 1. Output ONLY valid JSON - no explanations, no extra text
+# 2. Detect ONLY attendance and punch related action intents
+# 3. If no intent matches, return intent = "general"
+
+# INTENTS:
+
+# - "apply_gate_pass" → user wants gate pass (e.g., "I need gate pass", "apply gate pass")
+# - "my_gatepass" → user's gate passes (e.g., "my gate passes")
+# - "gatepass_list" → all gate passes (e.g., "show all gate passes")
+# - "pending_gatepass" → pending gate pass requests (e.g., "pending gate passes")
+
+# Output JSON Schema:
+# {
+#   "intent": "<string>",
+#   "reason": "<string | null>",
+#   "destination": "<string | null>",
+#   "action": "<string | null>"
+# }
+
+# Remember: Output ONLY the JSON object. No markdown, no backticks, no explanation.
+# """
+#                 start_time = time.perf_counter()
+        
+#                 intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark = intent_model_call(
+#                     user, gate_prompt
+#                 )
+        
+#                 # ⏱️ END TIMER
+#                 end_time = time.perf_counter()
+        
+#                 latency_ms = (end_time - start_time) * 1000
+        
+#                 print(f"NLU Time Taken: {latency_ms:.2f} ms")
+
+#                 print("\n" + "=" * 50)
+#                 print("Intent:", intent)
+#                 print("Confidence:", confidence)
+#                 print("Reason:", reason)
+#                 # print("Destination:", destination)
+#                 print("leave category: ",leave_category)
+#                 print("=" * 50)
+#                 print("destination:--- ", destination)
+#                 print("trip name:---- ", trip_name)
+#                 print("purpose:---- ", purpose)
+#                 print("remark: -----", remark)
+#                 print("action: -----", action)
+        
+#                 print("\nRaw AI JSON:")
+#                 print("\n")
+#                 print("hello")
+        
+#             elif intent == "tada":
+#                 tada_prompt = """You are an NLU engine for FixHR application. Extract intent and entities from user messages.
+
+# CRITICAL RULES:
+# 1. Output ONLY valid JSON - no explanations, no extra text
+# 2. Detect ONLY attendance and punch related action intents
+# 3. If no intent matches, return intent = "general"
+
+# INTENTS:
+
+# TADA (Travel Allowance & Daily Allowance):
+# - "create_tada_outstation" → user wants to create a new outstation TADA request (e.g., "create TADA outstation", "make a travel request outstation",
+#     "I want to create a TADA outstation request", "Ek trip banana hai yaar—trip name ‘Office Visit’, destination Mumbai rakh do, 
+#     purpose Visit aur remark me likh dena ‘Manager se meeting hai’")
+# - "create_tada_local" → user wants to create a new TADA local request (e.g., "create TADA local", "make a local travel request", "apply TADA local", 
+#     "I want to create a TADA local request", "generate local travel request")
+
+# Output JSON Schema:
+# {
+#   "intent": "<string>",
+#   "reason": "<string | null>",
+#   "destination": "<string | null>",
+#   "action": "<string | null>"
+# }
+
+# Remember: Output ONLY the JSON object. No markdown, no backticks, no explanation.
+# """
+#                 start_time = time.perf_counter()
+        
+#                 intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark = intent_model_call(
+#                     user, tada_prompt
+#                 )
+        
+#                 # ⏱️ END TIMER
+#                 end_time = time.perf_counter()
+        
+#                 latency_ms = (end_time - start_time) * 1000
+        
+#                 print(f"NLU Time Taken: {latency_ms:.2f} ms")
+
+#                 print("\n" + "=" * 50)
+#                 print("Intent:", intent)
+#                 print("Confidence:", confidence)
+#                 print("Reason:", reason)
+#                 # print("Destination:", destination)
+#                 print("leave category: ",leave_category)
+#                 print("=" * 50)
+#                 print("destination:--- ", destination)
+#                 print("trip name:---- ", trip_name)
+#                 print("purpose:---- ", purpose)
+#                 print("remark: -----", remark)
+#                 print("action: -----", action)
+        
+#                 print("\nRaw AI JSON:")
+#                 print("\n")
+#                 print("hello")
+
+#             elif intent == "tada_list":
+#                 tada_list_prompt = """You are an NLU engine for FixHR application. Extract intent and entities from user messages.
+
+# CRITICAL RULES:
+# 1. Output ONLY valid JSON - no explanations, no extra text
+# 2. Detect ONLY attendance and punch related action intents
+# 3. If no intent matches, return intent = "general"
+
+# INTENTS:
+
+# TADA LOCAL & TADA OUTSTATION
+# - "tada_local_claim_list" → user wants to see Local TADA claim approval list
+# - "tada_local_request_list" → user wants to see Local TADA request approval list
+# - "tada_local_acceptance_list" → user wants to see Local TADA acceptance/approved list
+# - "tada_outstation_claim_list" → user wants to see Outstation TADA claim approval list
+# - "tada_outstation_request_list" → user wants to see Outstation TADA request approval list
+# - "tada_outstation_acceptance_list" → user wants to see Outstation TADA acceptance/approved list
+# - "all_tada" → user wants to see complete TADA list (triggered when user message contains: “tada list”, “all tada”, “tada details”, “complete tada”)
+
+# Output JSON Schema:
+# {
+#   "intent": "<string>",
+#   "reason": "<string | null>",
+#   "destination": "<string | null>",
+#   "action": "<string | null>"
+# }
+
+# Remember: Output ONLY the JSON object. No markdown, no backticks, no explanation.
+# """
+
+#                 start_time = time.perf_counter()
+        
+#                 intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark = intent_model_call(
+#                     user, tada_list_prompt
+#                 )
+        
+#                 # ⏱️ END TIMER
+#                 end_time = time.perf_counter()
+        
+#                 latency_ms = (end_time - start_time) * 1000
+        
+#                 print(f"NLU Time Taken: {latency_ms:.2f} ms")
+
+#                 print("\n" + "=" * 50)
+#                 print("Intent:", intent)
+#                 print("Confidence:", confidence)
+#                 print("Reason:", reason)
+#                 # print("Destination:", destination)
+#                 print("leave category: ",leave_category)
+#                 print("=" * 50)
+#                 print("destination:--- ", destination)
+#                 print("trip name:---- ", trip_name)
+#                 print("purpose:---- ", purpose)
+#                 print("remark: -----", remark)
+#                 print("action: -----", action)
+        
+#                 print("\nRaw AI JSON:")
+#                 print("\n")
+#                 print("hello")
+        
+#             elif intent == "compoff":
+#                 comp_prompt = """You are an NLU engine for FixHR application. Extract intent and entities from user messages.
+
+# CRITICAL RULES:
+# 1. Output ONLY valid JSON - no explanations, no extra text
+# 2. Detect ONLY attendance and punch related action intents
+# 3. If no intent matches, return intent = "general"
+
+# INTENTS:
+
+# COMPOFF APPROVAL LIST:
+# - "compoff_list" → user wants to see CompOff request list
+# - "pending_compoff" → user wants to see pending CompOff approval list
+
+# Output JSON Schema:
+# {
+#   "intent": "<string>",
+#   "reason": "<string | null>",
+#   "destination": "<string | null>",
+#   "action": "<string | null>"
+# }
+
+# Remember: Output ONLY the JSON object. No markdown, no backticks, no explanation.
+# """
+#                 start_time = time.perf_counter()
+        
+#                 intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark = intent_model_call(
+#                     user, comp_prompt
+#                 )
+        
+#                 # ⏱️ END TIMER
+#                 end_time = time.perf_counter()
+        
+#                 latency_ms = (end_time - start_time) * 1000
+        
+#                 print(f"NLU Time Taken: {latency_ms:.2f} ms")
+
+#                 print("\n" + "=" * 50)
+#                 print("Intent:", intent)
+#                 print("Confidence:", confidence)
+#                 print("Reason:", reason)
+#                 # print("Destination:", destination)
+#                 print("leave category: ",leave_category)
+#                 print("=" * 50)
+#                 print("destination:--- ", destination)
+#                 print("trip name:---- ", trip_name)
+#                 print("purpose:---- ", purpose)
+#                 print("remark: -----", remark)
+#                 print("action: -----", action)
+        
+#                 print("\nRaw AI JSON:")
+#                 print("\n")
+#                 print("hello")
+        
+#             elif intent == "payslip":
+#                 payslip_prompt = """You are an NLU engine for FixHR application. Extract intent and entities from user messages.
+
+# CRITICAL RULES:
+# 1. Output ONLY valid JSON - no explanations, no extra text
+# 2. Detect ONLY attendance and punch related action intents
+# 3. If no intent matches, return intent = "general"
+
+# INTENTS:
+
+# - "payslip" → user wants payslip (e.g., "show payslip", "download salary slip")
+
+# Output JSON Schema:
+# {
+#   "intent": "<string>",
+#   "reason": "<string | null>",
+#   "destination": "<string | null>",
+#   "action": "<string | null>"
+# }
+
+# Remember: Output ONLY the JSON object. No markdown, no backticks, no explanation.
+# """
+#                 start_time = time.perf_counter()
+        
+#                 intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark = intent_model_call(
+#                     user, payslip_prompt
+#                 )
+        
+#                 # ⏱️ END TIMER
+#                 end_time = time.perf_counter()
+        
+#                 latency_ms = (end_time - start_time) * 1000
+        
+#                 print(f"NLU Time Taken: {latency_ms:.2f} ms")
+
+#                 print("\n" + "=" * 50)
+#                 print("Intent:", intent)
+#                 print("Confidence:", confidence)
+#                 print("Reason:", reason)
+#                 # print("Destination:", destination)
+#                 print("leave category: ",leave_category)
+#                 print("=" * 50)
+#                 print("destination:--- ", destination)
+#                 print("trip name:---- ", trip_name)
+#                 print("purpose:---- ", purpose)
+#                 print("remark: -----", remark)
+#                 print("action: -----", action)
+        
+#                 print("\nRaw AI JSON:")
+#                 print("\n")
+#                 print("hello")
+        
+#             elif intent == "holiday":
+#                 holiday_prompt = """You are an NLU engine for FixHR application. Extract intent and entities from user messages.
+
+# CRITICAL RULES:
+# 1. Output ONLY valid JSON - no explanations, no extra text
+# 2. Detect ONLY attendance and punch related action intents
+# 3. If no intent matches, return intent = "general"
+
+# INTENTS:
+
+# - "holiday_list" → holidays (e.g., "show holidays", "holiday calendar")
+
+# Output JSON Schema:
+# {
+#   "intent": "<string>",
+#   "reason": "<string | null>",
+#   "destination": "<string | null>",
+#   "action": "<string | null>"
+# }
+
+# Remember: Output ONLY the JSON object. No markdown, no backticks, no explanation.
+# """
+#                 start_time = time.perf_counter()
+        
+#                 intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark = intent_model_call(
+#                     user, holiday_prompt
+#                 )
+        
+#                 # ⏱️ END TIMER
+#                 end_time = time.perf_counter()
+        
+#                 latency_ms = (end_time - start_time) * 1000
+        
+#                 print(f"NLU Time Taken: {latency_ms:.2f} ms")
+
+#                 print("\n" + "=" * 50)
+#                 print("Intent:", intent)
+#                 print("Confidence:", confidence)
+#                 print("Reason:", reason)
+#                 # print("Destination:", destination)
+#                 print("leave category: ",leave_category)
+#                 print("=" * 50)
+#                 print("destination:--- ", destination)
+#                 print("trip name:---- ", trip_name)
+#                 print("purpose:---- ", purpose)
+#                 print("remark: -----", remark)
+#                 print("action: -----", action)
+        
+#                 print("\nRaw AI JSON:")
+#                 print("\n")
+#                 print("hello")
+        
+#             elif intent == "privacy":
+#                 privacy_prompt = """You are an NLU engine for FixHR application. Extract intent and entities from user messages.
+
+# CRITICAL RULES:
+# 1. Output ONLY valid JSON - no explanations, no extra text
+# 2. Detect ONLY attendance and punch related action intents
+# 3. If no intent matches, return intent = "general"
+
+# INTENTS:
+
+# - "privacy_policy" → privacy policy (e.g., "privacy policy", "data policy")
+
+# Output JSON Schema:
+# {
+#   "intent": "<string>",
+#   "reason": "<string | null>",
+#   "destination": "<string | null>",
+#   "action": "<string | null>"
+# }
+
+# Remember: Output ONLY the JSON object. No markdown, no backticks, no explanation.
+# """
+#                 start_time = time.perf_counter()
+        
+#                 intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark = intent_model_call(
+#                     user, privacy_prompt
+#                 )
+        
+#                 # ⏱️ END TIMER
+#                 end_time = time.perf_counter()
+        
+#                 latency_ms = (end_time - start_time) * 1000
+        
+#                 print(f"NLU Time Taken: {latency_ms:.2f} ms")
+
+#                 print("\n" + "=" * 50)
+#                 print("Intent:", intent)
+#                 print("Confidence:", confidence)
+#                 print("Reason:", reason)
+#                 # print("Destination:", destination)
+#                 print("leave category: ",leave_category)
+#                 print("=" * 50)
+#                 print("destination:--- ", destination)
+#                 print("trip name:---- ", trip_name)
+#                 print("purpose:---- ", purpose)
+#                 print("remark: -----", remark)
+#                 print("action: -----", action)
+        
+#                 print("\nRaw AI JSON:")
+#                 print("\n")
+#                 print("hello")
+        
+#             else:
+#                 print(intent)
+
+#         else:
+#             print("00000000000000000000", intent)
+            
+  
+
+
+
