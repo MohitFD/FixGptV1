@@ -20,11 +20,6 @@ def get_device():
     return "cpu"
 
 
-
-
-
-
-
 SYSTEM_PROMPT = """You are an intent classifier.
 
 If the user message contains ANY of these words (case-insensitive):

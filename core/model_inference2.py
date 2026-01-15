@@ -4,6 +4,7 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import json
 import os
+import time
 
 # --------------------------- PATHS ---------------------------
 # Resolve model + history relative to this file to keep HF loader happy.
@@ -16,8 +17,7 @@ MODEL_DIR = str((_BASE_DIR / "merged_phi3").resolve())
 
 
 # --------------------------- GLOBAL SYSTEM PROMPT ---------------------------
-SYSTEM_PROMPT = (
-    """You are FixGPT — the official AI assistant of FixHR.
+SYSTEM_PROMPT = """You are FixGPT — the official AI assistant of FixHR.
 
 THESE RULES ARE ABSOLUTE AND MUST NEVER BE BROKEN.
 
@@ -48,7 +48,6 @@ Verified Facts:
   • Enterprise: Custom pricing (Talk to Sales)
 - TADA = Travel and Daily Allowances: FixHR enables employees to submit, approve, and manage travel and daily allowance claims digitally, ensuring faster reimbursements and complete visibility.\n\n"
 """
-)
 
 
 # --------------------------- DEVICE PICK ---------------------------
@@ -240,7 +239,7 @@ def generate_response(tokenizer, model, device, user_message: str):
     with torch.no_grad():
         output_ids = model.generate(
             **model_inputs,
-            max_new_tokens=250,
+            max_new_tokens=90,
             do_sample=False,             # FixHR domain ke liye deterministic output better
             top_p=0.9,                   # future tuning ke liye rehne do
             temperature=0.0,             # do_sample=False hai to ye ignore hoga
@@ -272,43 +271,69 @@ def model_response(message: str) -> str:
     except Exception as e:
         print(f"[ERROR] {e}")
 
+    # ---- history load/save ----
+    try:
+        try:
+            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+                history = json.load(f)
+                if not isinstance(history, list):
+                    history = []
+        except Exception:
+            history = []
+
+        history.append({
+            "user": user_text,
+            "assistant": reply
+        })
+
+        with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+            json.dump(history, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"[WARN] Could not save history: {e}")
 
     return reply
 
 
-# def main():
-#     print("========== FIXHR TERMINAL CHATBOT ==========\n")
-#     print("Type your message. Type 'exit' to quit.\n")
-#     TOKENIZER, MODEL, DEVICE = load_model_and_tokenizer()
+def main():
+    print("========== FIXHR TERMINAL CHATBOT ==========\n")
+    print("Type your message. Type 'exit' to quit.\n")
+    TOKENIZER, MODEL, DEVICE = load_model_and_tokenizer()
 
-#     while True:
-#         user_input = input("You: ").strip()
-#         if user_input.lower() in ["exit", "quit"]:
-#             print("Goodbye!")
-#             break
+    while True:
+        user_input = input("You: ").strip()
+        if user_input.lower() in ["exit", "quit"]:
+            print("Goodbye!")
+            break
 
-#         reply = generate_response(TOKENIZER, MODEL, DEVICE, user_input)
-#         print("FixGPT:", reply)
+        start_time = time.perf_counter()
+
+        reply = generate_response(TOKENIZER, MODEL, DEVICE, user_input)
+        # ⏱️ END TIMER
+        end_time = time.perf_counter()
+
+        latency_ms = (end_time - start_time) * 1000
+        print(f"NLU Time Taken: {latency_ms:.2f} ms")
+        print("FixGPT:", reply)
         
-#         try:
-#             try:
-#                 with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-#                     history = json.load(f)
-#                     if not isinstance(history, list):
-#                         history = []
-#             except Exception:
-#                 history = []
+        try:
+            try:
+                with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+                    history = json.load(f)
+                    if not isinstance(history, list):
+                        history = []
+            except Exception:
+                history = []
 
-#             history.append({
-#                 "user": user_input,
-#                 "assistant": reply
-#             })
+            history.append({
+                "user": user_input,
+                "assistant": reply
+            })
 
-#             with open(HISTORY_FILE, "w", encoding="utf-8") as f:
-#                 json.dump(history, f, ensure_ascii=False, indent=2)
-#         except Exception as e:
-#             print(f"[WARN] Could not save history: {e}")
+            with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+                json.dump(history, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"[WARN] Could not save history: {e}")
        
 
-# if __name__ == "__main__":
-#     main()
+if __name__ == "__main__":
+    main()

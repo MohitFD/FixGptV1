@@ -12,13 +12,15 @@ from core.model_inference2 import model_response
 from core.phi3_inference_v3 import intent_model_call
 from django.conf import settings
 from core.extract_date_time import extract_datetime_info
-from django.utils import timezone
+from django.utils import timezone 
 from .models import ChatConversation
 import uuid
 from datetime import datetime, date, time, timedelta
 from typing import Optional, List, Dict, Any, Union
 import json
 import os
+import time
+
 # ---------------- API Endpoints ----------------
 # FIXHR_LOGIN_URL = "http://192.168.1.53/api/auth/login"
 FIXHR_LOGIN_URL = "https://dev.fixhr.app/api/auth/login"
@@ -245,7 +247,9 @@ def classify_message(message: str, custom_prompt=None):
     intent, confidence, reason, destination
     """
     try:
-        intent, confidence, reason, destination, leave_category, trip_name, purpose, remark = intent_model_call(message, custom_prompt=None)
+        intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark = intent_model_call(message, custom_prompt=None)
+
+        print("----------------------------> intent: ", intent)
 
     except Exception as exc:
         logger.error("Intent model failed: %s", exc, exc_info=True)
@@ -2600,6 +2604,7 @@ Output JSON format:
         confidence,
         reason,
         destination,
+        action,
         leave_category,
         trip_name,
         purpose,
@@ -2691,6 +2696,7 @@ Output JSON format:
         confidence,
         reason,
         destination,
+        action,
         leave_category,
         trip_name,
         purpose,
@@ -4918,8 +4924,13 @@ def chat_api(request):
 
     
     # 1) Classify intent using phi3_inference_v3
+    start_time = time.perf_counter()
     classification = classify_message(msg)
-    print(f"classification =============== : {classification}")
+    # ⏱️ END TIMER
+    end_time = time.perf_counter()
+    latency_ms = (end_time - start_time) * 1000
+    print(f"NLU Time Taken:-------------------------------------------------------> {latency_ms:.2f} ms")
+    # print(f"classification =============== : {classification}")
     intent = classification.get("intent") or "general"
 
     reason = classification.get("reason") or "other"
@@ -4930,11 +4941,16 @@ def chat_api(request):
     lang = classification.get("language", "en")
     confidence = classification.get("confidence", 0.0)
     
-    print("🤖 Phi-3 Intent →", classification)
+    print("🤖 Phi-3 Intent →")
     
     # 2) If general intent, use model_inference2.py for response
     if intent == "general":
+        start_time = time.perf_counter()
         reply = model_response(msg) or handle_general_chat(msg, lang)
+        # ⏱️ END TIMER
+        end_time = time.perf_counter()
+        latency_ms = (end_time - start_time) * 1000
+        print(f"NLU Time Taken:-----------------------------------------------------🤖-> {latency_ms:.2f} ms")
         return JsonResponse({
             "reply": reply,
             "intent": intent,
