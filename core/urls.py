@@ -28,9 +28,6 @@ urlpatterns = [
     path("api/tada/purposes/", views.tada_purposes, name="tada_purposes"),
     path("api/tada/types/", views.tada_travel_types, name="tada_travel_types"),
     path("api/tada/create/", views.tada_create_request, name="tada_create_request"),
-    path("api/tada/local/create/", views.local_tada_create_request, name="local_tada_create_request"),
-    path("api/tada/local/purposes/", views.local_tada_purposes, name="local_tada_purposes"),
-    path("api/tada/local/types/", views.local_tada_travel_types, name="local_tada_travel_types"),
     
     
     path("api/tada/create/local/", views.tada_create_local, name="tada_create_local"),
@@ -41,9 +38,5 @@ urlpatterns = [
     path("acceptance-list/<int:travel_type_id>/", views.acceptance_list, name="acceptance_list"),
     path("claim-pdf/<str:token_hash>/", views.download_claim_pdf, name="claim_pdf"),
     # ==================================================================================
-
-
-
-
 ]
 

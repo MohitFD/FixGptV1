@@ -6,18 +6,16 @@ import time
 
 from pathlib import Path
 
+# from core.model_inference2 import load_model_and_tokenizer
+# ===========================================================================================================================v2
+# _BASE_DIR = Path(__file__).resolve().parent
+# MODEL_DIR = str((_BASE_DIR / "merged_phi3").resolve())
+
+# ===========================================================================================================================
+
 MODEL_DIR = str((Path(__file__).resolve().parent / "merged_phi3_intent").resolve())
 
 
-def get_device():
-    """
-    Keep GPU/CPU selection consistent with model_inference2.
-    """
-    if torch.cuda.is_available():
-        print(">> [phi3_intent] Using GPU (cuda)")
-        return "cuda"
-    print(">> [phi3_intent] Using CPU")
-    return "cpu"
 
 
 SYSTEM_PROMPT = """You are an intent classifier.
@@ -50,38 +48,19 @@ Output:
 
 
 
-
-# SYSTEM_PROMPT = """You are an intent classifier.
-
-# Classify the user message into ONLY one intent:
-
-# - "task": 
-#   If the message is related to ANY system action such as:
-#   leave, attendance, miss punch, gate pass, TADA, CompOff,
-#   apply, create, show list, history, pending, approve, reject,
-#   balance, report, download, request, acceptance, claims,
-#   payslip, holiday list, privacy policy, TADA list, show,.
-
-# - "general":
-#   If the message is only asking for information or explanation
-#   (what is, why, how, meaning, details, kya hai, explain, batao, tell me).
-
-# Rules:
-# - Choose one intent only.
-# - No explanation.
-# - Always output valid JSON.
-
-# Output:
-# {
-#   "intent": "<task | general>"
-# }
-# """
-
-
-
-
-
 # ---------------------- MODEL LOADING ----------------------
+
+def get_device():
+    """
+    Keep GPU/CPU selection consistent with model_inference2.
+    """
+    if torch.cuda.is_available():
+        print(">> [phi3_intent] Using GPU (cuda)")
+        return "cuda"
+    print(">> [phi3_intent] Using CPU")
+    return "cpu"
+
+
 def _load_tokenizer():
     print(">> [phi3_intent] Loading tokenizer...")
     return AutoTokenizer.from_pretrained(
@@ -126,6 +105,100 @@ def load_model():
 
     raise last_error if last_error else RuntimeError("Unknown error loading phi3 intent model")
 
+# ================================================================================================================= v2
+
+
+# # --------------------------- DEVICE PICK ---------------------------
+# def get_device():
+#     """
+#     Prefer GPU for speed but gracefully fall back to CPU.
+#     Keeps behaviour aligned with phi3_inference_v3.
+#     """
+#     if torch.cuda.is_available():
+#         print(">> Using GPU (cuda)")
+#         return "cuda"
+#     print(">> Using CPU")
+#     return "cpu"
+
+
+# # --------------------------- MODEL LOADING ---------------------------
+# def _device_map_for(device: str):
+#     """
+#     Build a friendly device map.
+#     - Multi-GPU: let HF Accelerate shard automatically.
+#     - Single GPU: pin to GPU 0.
+#     - CPU fallback: map everything to CPU.
+#     """
+#     if device == "cpu":
+#         return {"": "cpu"}
+#     if torch.cuda.device_count() > 1:
+#         return "auto"
+#     return {"": 0}
+
+
+# def _load_model_on_device(device: str):
+#     """Load model on requested device."""
+#     device_map = _device_map_for(device)
+#     print(f">> Loading model on {device} (device_map={device_map})...")
+
+#     load_kwargs = {
+#         "device_map": device_map,
+#         "trust_remote_code": False,
+#         "low_cpu_mem_usage": True,
+#         "attn_implementation": "eager",
+#     }
+
+#     use_8bit = False
+#     if device != "cpu":
+#         try:
+#             import bitsandbytes  # noqa: F401
+#             use_8bit = True
+#         except ImportError:
+#             use_8bit = False
+
+#     if use_8bit:
+#         load_kwargs["load_in_8bit"] = True
+#         print(">> Loading main model in 8-bit to fit GPU memory")
+#     else:
+#         load_kwargs["torch_dtype"] = torch.bfloat16 if device != "cpu" else torch.float32
+
+#     model = AutoModelForCausalLM.from_pretrained(
+#         MODEL_DIR,
+#         **load_kwargs,
+#     )
+#     if device == "cpu":
+#         model.to("cpu")
+#     model.eval()
+#     return model
+
+
+# def load_model_and_tokenizer():
+#     """
+#     Prefer GPU but ensure we never crash if memory is low by falling back to CPU.
+#     """
+#     preferred = get_device()
+#     candidates = [preferred] if preferred == "cpu" else [preferred, "cpu"]
+
+#     print(">> Loading tokenizer...")
+#     tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR)
+
+#     last_error = None
+#     for device in candidates:
+#         try:
+#             model = _load_model_on_device(device)
+#             return tokenizer, model, device
+#         except torch.cuda.OutOfMemoryError as exc:
+#             last_error = exc
+#             print("!! CUDA OOM while loading main model, falling back to CPU...")
+#             torch.cuda.empty_cache()
+#         except Exception as exc:
+#             last_error = exc
+#             if device == "cpu":
+#                 break
+
+#     raise last_error if last_error else RuntimeError("Unable to load FixGPT model")
+
+# ===========================================================================================================================
 
 # ---------------------- PROMPT BUILDER ----------------------
 def make_prompt(user_msg, custom_prompt=None):
@@ -339,6 +412,8 @@ def extract_fields(raw_output):
 
 print(">> [phi3_intent] Initializing global classifier...")
 TOKENIZER, MODEL, DEVICE = load_model()
+
+# TOKENIZER, MODEL, DEVICE = load_model_and_tokenizer()
 print(">> [phi3_intent] Global classifier ready ✅")
 
 def intent_model_call(user_msg, custom_prompt=None):
@@ -361,22 +436,10 @@ Identify ONLY the MAIN intent category of the user message.
 Support English, Hindi, and Hinglish.
 
 Intents:
-- leave
-- attendance
-- miss_punch
-- gate_pass
-- tada
-- tada_list
-- compoff
-- payslip
-- holiday
-- privacy
-- general
+leave, attendance, miss_punch, gate_pass, tada, tada_list, compoff, payslip, holiday, privacy
 
 Rules:
-- Output only JSON
 - One intent only
-- No explanation
 - If unsure, use "general"
 
 Output:
@@ -412,7 +475,6 @@ Output format:
 {
 "intent": "<string>",
 "reason": "<string | null>",
-"destination": "leave_management"
 }
 
 """
@@ -422,8 +484,36 @@ Output format:
             )
             return intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark
 
-    
-    
+        elif intent == "gate_pass":
+            gate_prompt = """You are an NLU engine for FixHR application. Extract intent and entities from user messages.
+
+CRITICAL RULES:
+1. Output ONLY valid JSON - no explanations, no extra text
+2. Detect ONLY attendance and punch related action intents
+3. If no intent matches, return intent = "general"
+
+INTENTS:
+
+- "apply_gate_pass" → user wants gate pass (e.g., "I need gate pass", "apply gate pass")
+- "my_gatepass" → user's gate passes (e.g., "my gate passes")
+- "pending_gatepass" → pending gate pass requests or all gate passes (e.g., "pending gate passes", "show all gate passes")
+
+Output JSON Schema:
+{
+"intent": "<string>",
+"reason": "<string | null>",
+"destination": "<string | null>"
+}
+
+Remember: Output ONLY the JSON object. No markdown, no backticks, no explanation.
+"""
+
+            intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark = intent_model_call(
+                user_msg, gate_prompt
+            )
+            return intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark
+
+        
         elif intent == "attendance":
             att_prompt = """You are an NLU engine for FixHR application. Extract intent and entities from user messages.
 
@@ -478,36 +568,6 @@ Remember: Output ONLY the JSON object. No markdown, no backticks, no explanation
 
             intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark = intent_model_call(
                 user_msg, att_prompt
-            )
-            return intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark
-
-    
-        elif intent == "gate_pass":
-            gate_prompt = """You are an NLU engine for FixHR application. Extract intent and entities from user messages.
-
-CRITICAL RULES:
-1. Output ONLY valid JSON - no explanations, no extra text
-2. Detect ONLY attendance and punch related action intents
-3. If no intent matches, return intent = "general"
-
-INTENTS:
-
-- "apply_gate_pass" → user wants gate pass (e.g., "I need gate pass", "apply gate pass")
-- "my_gatepass" → user's gate passes (e.g., "my gate passes")
-- "pending_gatepass" → pending gate pass requests or all gate passes (e.g., "pending gate passes", "show all gate passes")
-
-Output JSON Schema:
-{
-"intent": "<string>",
-"reason": "<string | null>",
-"destination": "<string | null>"
-}
-
-Remember: Output ONLY the JSON object. No markdown, no backticks, no explanation.
-"""
-
-            intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark = intent_model_call(
-                user_msg, gate_prompt
             )
             return intent, confidence, reason, destination, action, leave_category, trip_name, purpose, remark
 
@@ -693,17 +753,27 @@ Remember: Output ONLY the JSON object. No markdown, no backticks, no explanation
 
 
 
-# # ---------------------- MAIN LOOP ----------------------
-# if __name__ == "__main__":
+# ---------------------- MAIN LOOP ----------------------
+if __name__ == "__main__":
     
 
-#     print("=== Phi-3 Mini JSON Chat NLU ===")
+    print("=== Phi-3 Mini JSON Chat NLU ===")
 
-#     while True:
-#         user = input("\nYou: ").strip()
-#         if user.lower() == "exit":
-#             break
+    while True:
+        user = input("\nYou: ").strip()
+        if user.lower() == "exit":
+            break
+
+        start_time = time.perf_counter()
+        lea = "" 
+        print("=========>", intent_model_call(user, lea) )
+        # ⏱️ END TIMER
+        end_time = time.perf_counter()
+        latency_ms = (end_time - start_time) * 1000
+        print(f"NLU Time Taken:-------------------------------------------------------> Time --> {latency_ms:.2f} ms")
+
         
+        # ============================================================================================================================================================
 #         custom_prompt = """You are an intent classifier.
 
 # Classify the user message into ONLY one intent:

@@ -9,7 +9,7 @@ from django.views.decorators.http import require_POST, require_http_methods, req
 from collections import defaultdict
 # Core imports for intent classification and response generation
 from core.model_inference2 import model_response
-from core.phi3_inference_v3 import intent_model_call
+from core.phi3_inference_v4 import intent_model_call
 from django.conf import settings
 from core.extract_date_time import extract_datetime_info
 from django.utils import timezone 
